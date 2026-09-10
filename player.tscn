@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3 uid="uid://c1player123456"]
+
+[ext_resource type="Script" path="res://player.gd" id="1_player"]
+
+[node name="Player" type="CharacterBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = CapsuleShape3D.new()
+shape.radius = 0.4
+shape.height = 1.6
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = CapsuleMesh.new()
+mesh.radius = 0.4
+mesh.height = 1.6
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+current = true
+fov = 75.0
