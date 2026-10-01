@@ -1,6 +1,6 @@
-/* app.js — логика ангара: выбор слота, замена деталей, подсчёт характеристик */
+/* app.js — логика ангара: выбор слотов (детали + оружие), замена, подсчёт характеристик */
 
-const { TIERS, SLOTS, PARTS, SVG_DRAW } = window.PART_DATA;
+const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon } = window.PART_DATA;
 
 // Текущая сборка робота (по умолчанию — средний комплект)
 let equipped = {
@@ -11,7 +11,14 @@ let equipped = {
   legs: "medium",
 };
 
-let selectedSlot = null;
+// Экипированное оружие (null — слот пуст)
+let weapons = {
+  weaponR: "medium",
+  weaponL: null,
+  weaponBack: null,
+};
+
+let selectedSlot = null; // может быть id детали или id оружия
 
 /* ---------- Отрисовка робота ---------- */
 function renderRobot() {
@@ -19,6 +26,11 @@ function renderRobot() {
     const g = document.getElementById("part-" + slot.id);
     g.innerHTML = SVG_DRAW[slot.id](equipped[slot.id]);
     g.classList.toggle("selected", selectedSlot === slot.id);
+  }
+  for (const wslot of WEAPON_SLOTS) {
+    const g = document.getElementById("part-" + wslot.id);
+    g.innerHTML = weapons[wslot.id] ? svgWeapon(wslot.id, weapons[wslot.id]) : "";
+    g.classList.toggle("selected", selectedSlot === wslot.id);
   }
 }
 
@@ -32,13 +44,24 @@ function computeTotals() {
     totals.weight += st.weight;
     totals.hp += st.hp;
   }
-  // Скорость — средняя по деталям (ноги и руки важнее): считаем средним арифметическим
+  // Вес и DPS оружия
+  totals.dps = 0;
+  totals.weaponCount = 0;
+  for (const wslot of WEAPON_SLOTS) {
+    const tierId = weapons[wslot.id];
+    if (!tierId) continue;
+    const st = WEAPONS[wslot.id][tierId].stats;
+    totals.weight += st.weight;
+    totals.dps += Math.round(st.dmg * st.rate);
+    totals.weaponCount++;
+  }
+  // Скорость — средняя по деталям
   const speeds = SLOTS.map((s) => PARTS[s.id][equipped[s.id]].stats.spd);
   totals.spd = Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length * 10) / 10;
 
-  // Штраф скорости за перегрузку: тяжёлые детали замедляют
+  // Штраф скорости за перегрузку: тяжёлые детали и оружие замедляют
   const speedPenalty = Math.floor(totals.weight / 25);
-  totals.effectiveSpd = Math.max(1, totals.spd - speedPenalty);
+  totals.effectiveSpd = Math.max(1, Math.round((totals.spd - speedPenalty) * 10) / 10);
   return totals;
 }
 
@@ -50,41 +73,56 @@ function renderTotals() {
     <span class="tstat">⚡ Скорость: <b>${t.effectiveSpd}</b></span>
     <span class="tstat">📦 Грузоподъёмность: <b>${t.cap} кг</b></span>
     <span class="tstat">⚖️ Вес: <b>${t.weight} кг</b></span>
-    <span class="tstat">❤️ ХП: <b>${t.hp}</b></span>`;
+    <span class="tstat">❤️ ХП: <b>${t.hp}</b></span>
+    <span class="tstat">🔫 Урон/сек: <b>${t.dps}</b></span>`;
 }
 
-/* ---------- Список слотов ---------- */
+/* ---------- Список слотов (детали + оружие) ---------- */
+function makeSlotBtn(name, tierLabel, partLabel, tierColor, slotId, empty) {
+  const btn = document.createElement("button");
+  btn.className = "slot-btn" + (selectedSlot === slotId ? " active" : "") + (empty ? " empty" : "");
+  btn.style.setProperty("--tier-color", tierColor || "#5a6b83");
+  btn.innerHTML = `
+    <span class="slot-name">${name}</span>
+    <span class="slot-tier">${tierLabel}</span>
+    <span class="slot-part">${partLabel}</span>`;
+  btn.addEventListener("click", () => selectSlot(slotId));
+  return btn;
+}
+
 function renderSlots() {
   const list = document.getElementById("slotsList");
   list.innerHTML = "";
+
+  const h1 = document.createElement("div");
+  h1.className = "slots-header";
+  h1.textContent = "🦾 Детали";
+  list.appendChild(h1);
   for (const slot of SLOTS) {
     const tier = equipped[slot.id];
     const part = PARTS[slot.id][tier];
-    const btn = document.createElement("button");
-    btn.className = "slot-btn" + (selectedSlot === slot.id ? " active" : "");
-    btn.style.setProperty("--tier-color", TIERS[tier].color);
-    btn.innerHTML = `
-      <span class="slot-name">${slot.name}</span>
-      <span class="slot-tier">${TIERS[tier].icon} ${TIERS[tier].name}</span>
-      <span class="slot-part">${part.label}</span>`;
-    btn.addEventListener("click", () => selectSlot(slot.id));
-    list.appendChild(btn);
+    list.appendChild(makeSlotBtn(slot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, part.label, TIERS[tier].color, slot.id, false));
+  }
+
+  const h2 = document.createElement("div");
+  h2.className = "slots-header";
+  h2.textContent = "🔫 Оружие";
+  list.appendChild(h2);
+  for (const wslot of WEAPON_SLOTS) {
+    const tier = weapons[wslot.id];
+    if (tier) {
+      const wp = WEAPONS[wslot.id][tier];
+      list.appendChild(makeSlotBtn(wslot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, wp.label, TIERS[tier].color, wslot.id, false));
+    } else {
+      list.appendChild(makeSlotBtn(wslot.name, "— не установлено", "пусто", null, wslot.id, true));
+    }
   }
 }
 
-/* ---------- Выбор комплекта для слота ---------- */
-function renderPicker() {
-  const title = document.getElementById("pickerTitle");
+/* ---------- Выбор комплекта для слота (деталь или оружие) ---------- */
+function renderPartPicker(slotName) {
   const cards = document.getElementById("pickerCards");
-  if (!selectedSlot) {
-    title.textContent = "Выберите слот (или деталь на роботе)";
-    cards.innerHTML = "";
-    return;
-  }
-  const slotName = SLOTS.find((s) => s.id === selectedSlot).name;
-  title.textContent = `Замена: ${slotName}`;
   cards.innerHTML = "";
-
   for (const tierId of Object.keys(TIERS)) {
     const tier = TIERS[tierId];
     const part = PARTS[selectedSlot][tierId];
@@ -111,6 +149,67 @@ function renderPicker() {
     });
     cards.appendChild(card);
   }
+}
+
+function renderWeaponPicker() {
+  const cards = document.getElementById("pickerCards");
+  cards.innerHTML = "";
+  for (const tierId of Object.keys(TIERS)) {
+    const tier = TIERS[tierId];
+    const wp = WEAPONS[selectedSlot][tierId];
+    const isCurrent = weapons[selectedSlot] === tierId;
+    const dps = Math.round(wp.stats.dmg * wp.stats.rate);
+    const card = document.createElement("button");
+    card.className = "part-card" + (isCurrent ? " current" : "");
+    card.style.setProperty("--tier-color", tier.color);
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="badge">${tier.icon} ${tier.name}</span>
+        ${isCurrent ? '<span class="installed">✔ стоит</span>' : ""}
+      </div>
+      <div class="card-label">${wp.label}</div>
+      <ul class="card-stats">
+        <li>💥 Урон: <b>${wp.stats.dmg}</b></li>
+        <li>🔁 Скорострельность: <b>${wp.stats.rate}/с</b></li>
+        <li>🎯 DPS: <b>${dps}</b></li>
+        <li>📏 Дальность: <b>${wp.stats.range}</b></li>
+        <li>🔷 Боезапас: <b>${wp.stats.ammo}</b></li>
+        <li>⚡ Энергия: <b>${wp.stats.energy}</b></li>
+        <li>⚖️ Вес: <b>${wp.stats.weight} кг</b></li>
+      </ul>`;
+    card.addEventListener("click", () => {
+      weapons[selectedSlot] = tierId;
+      renderAll();
+    });
+    cards.appendChild(card);
+  }
+  // кнопка снять оружие
+  if (weapons[selectedSlot]) {
+    const off = document.createElement("button");
+    off.className = "part-card remove";
+    off.innerHTML = `<div class="card-label">✖ Снять оружие</div>`;
+    off.addEventListener("click", () => {
+      weapons[selectedSlot] = null;
+      renderAll();
+    });
+    cards.appendChild(off);
+  }
+}
+
+function renderPicker() {
+  const title = document.getElementById("pickerTitle");
+  const cards = document.getElementById("pickerCards");
+  if (!selectedSlot) {
+    title.textContent = "Выберите слот (или деталь/оружие на роботе)";
+    cards.innerHTML = "";
+    return;
+  }
+  const isWeapon = selectedSlot.startsWith("weapon");
+  const slotObj = isWeapon ? WEAPON_SLOTS.find((s) => s.id === selectedSlot)
+                           : SLOTS.find((s) => s.id === selectedSlot);
+  title.textContent = `Замена: ${slotObj.name}`;
+  if (isWeapon) renderWeaponPicker();
+  else renderPartPicker(slotObj.name);
 }
 
 function selectSlot(id) {

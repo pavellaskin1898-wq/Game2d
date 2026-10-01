@@ -4,6 +4,9 @@
    Характеристики: сила, скорость, грузоподъёмность, вес, ХП
    ========================================================= */
 
+// IIFE — изолируем переменные от глобальной области видимости
+(function () {
+
 const TIERS = {
   light:  { name: "Лёгкий",  color: "#4dd2ff", icon: "🟦" },
   medium: { name: "Средний", color: "#ffb347", icon: "🟨" },
@@ -194,7 +197,68 @@ function svgLegs(tier) {
     <path d="M196 400 h44 v14 a4 4 0 0 1 -4 4 h-36 a4 4 0 0 1 -4 -4 z" fill="${p.dark}"/>`;
 }
 
-// Экран (визор) поверх головы — не используется отдельно, оставлено на будущее
+/* ---------- Оружие (3 слота × 3 комплекта) ----------
+   stats: dmg — урон за выстрел, rate — скорострельность (выстр/сек),
+   range — дальность (условные единицы по viewBox 400x520),
+   ammo — боезапас, energy — энергия на 1 очередь (мс), weight — вес (кг)
+------------------------------------------------------------------------- */
+const WEAPONS = {
+  weaponR: {
+    light:  { label: "Лазер «Игла» L-1",     stats: { dmg: 6,  rate: 8,  range: 170, ammo: 120, energy: 3,  weight: 3 } },
+    medium: { label: "Импульсер «Оса» P-22", stats: { dmg: 14, rate: 4,  range: 150, ammo: 80,  energy: 8,  weight: 9 } },
+    heavy:  { label: "Гаусс-пушка «Молот» G-7", stats: { dmg: 42, rate: 1.2, range: 210, ammo: 30, energy: 25, weight: 26 } },
+  },
+  weaponL: {
+    light:  { label: "Плазменный веер «Вейл»", stats: { dmg: 5,  rate: 9,  range: 120, ammo: 140, energy: 3,  weight: 3 } },
+    medium: { label: "Дробовик «Громобой» S-4", stats: { dmg: 20, rate: 2,  range: 90,  ammo: 48,  energy: 12, weight: 11 } },
+    heavy:  { label: "Ракетница «Армагеддон» R-9", stats: { dmg: 55, rate: 0.8, range: 190, ammo: 12, energy: 30, weight: 30 } },
+  },
+  weaponBack: {
+    light:  { label: "Рой дронов «Стая» D-3",       stats: { dmg: 4,  rate: 10, range: 160, ammo: 100, energy: 2,  weight: 4 } },
+    medium: { label: "Ракетный блок «Залп» M-6",    stats: { dmg: 18, rate: 3,  range: 180, ammo: 60,  energy: 10, weight: 14 } },
+    heavy:  { label: "Орбитальная линия «Дамоклов меч» O-1", stats: { dmg: 80, rate: 0.5, range: 240, ammo: 6, energy: 40, weight: 34 } },
+  },
+};
+
+const WEAPON_SLOTS = [
+  { id: "weaponR",    name: "Оружие правое" },
+  { id: "weaponL",    name: "Оружие левое" },
+  { id: "weaponBack", name: "Оружие на спине" },
+];
+
+// Графика оружия (крепится к руке / спине робота)
+function svgWeapon(slotId, tier) {
+  const p = tierPalette(tier);
+  if (slotId === "weaponR") {
+    // ствол из правой руки (кисть ~ x=292..300, y≈292)
+    return `
+      <rect x="286" y="280" width="52" height="14" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+      <rect x="330" y="283" width="16" height="8" rx="3" fill="${p.main}"/>
+      <circle cx="348" cy="287" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="296" y="270" width="26" height="10" rx="4" fill="${p.joint}"/>` : ""}`;
+  }
+  if (slotId === "weaponL") {
+    return `
+      <rect x="62" y="280" width="52" height="14" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+      <rect x="54" y="283" width="16" height="8" rx="3" fill="${p.main}"/>
+      <circle cx="52" cy="287" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="78" y="270" width="26" height="10" rx="4" fill="${p.joint}"/>` : ""}`;
+  }
+  // weaponBack — ранец над головой робота (y < 20)
+  const w = tier === "light" ? 46 : tier === "medium" ? 60 : 76;
+  const hgt = tier === "light" ? 18 : tier === "medium" ? 22 : 26;
+  const topY = 18 - hgt; // нижний край ранца на y=18
+  const barrels = [];
+  const n = tier === "light" ? 4 : tier === "medium" ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const bx = 200 - w / 2 + 10 + i * ((w - 20) / Math.max(1, n - 1));
+    barrels.push(`<circle cx="${bx.toFixed(1)}" cy="${topY + 4}" r="4" fill="#fff7c0" stroke="${p.joint}" stroke-width="2"/>`);
+  }
+  return `
+    <rect x="${200 - w / 2}" y="${topY}" width="${w}" height="${hgt}" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+    ${barrels.join("")}`;
+}
+
 const SVG_DRAW = {
   head: (t) => svgHead(t),
   body: (t) => svgBody(t),
@@ -203,4 +267,6 @@ const SVG_DRAW = {
   armL: (t) => svgArm(t, "L"),
 };
 
-window.PART_DATA = { TIERS, SLOTS, PARTS, SVG_DRAW };
+window.PART_DATA = { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon };
+
+})();

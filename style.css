@@ -81,6 +81,10 @@ body {
 .panel { display: flex; flex-direction: column; gap: 14px; }
 
 .slots { display: flex; flex-direction: column; gap: 8px; }
+.slots-header {
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa3bf; margin-top: 6px; padding-bottom: 2px; border-bottom: 1px solid #2e3d55;
+}
 .slot-btn {
   display: grid; grid-template-columns: 1fr auto; grid-template-areas:
     "name tier"
@@ -98,6 +102,7 @@ body {
 }
 .slot-btn:hover { background: #223047; }
 .slot-btn.active { outline: 2px solid #7de3ff; background: #223047; transform: translateX(3px); }
+.slot-btn.empty { opacity: 0.55; border-left-style: dashed; }
 .slot-name { grid-area: name; font-weight: 600; }
 .slot-tier { grid-area: tier; font-size: 12px; color: var(--tier-color); white-space: nowrap; }
 .slot-part { grid-area: part; font-size: 12px; color: #93a5c1; }
@@ -121,6 +126,8 @@ body {
 }
 .part-card:hover { background: #223047; transform: translateY(-2px); }
 .part-card.current { outline: 2px solid var(--tier-color); }
+.part-card.remove { border-top-color: #ff5c5c; text-align: center; color: #ffb1b1; }
+.part-card.remove:hover { background: #3a2028; }
 
 .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .badge {

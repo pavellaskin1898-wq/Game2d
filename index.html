@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ангар — Конструктор робота 2D</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,7 +18,7 @@
       <!-- Ангар с роботом -->
       <section class="hangar-wrap">
         <div class="hangar" id="hangar">
-          <svg id="robotSvg" viewBox="0 0 400 520" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <svg id="robotSvg" viewBox="-10 -10 420 540" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stop-color="#2b3648"/>
@@ -28,12 +29,19 @@
               </filter>
             </defs>
 
+            <!-- Оружие на спине (за роботом) -->
+            <g id="part-weaponBack" class="robot-part" data-slot="weaponBack"></g>
+
             <!-- Части робота (порядок отрисовки: ноги -> руки -> тело -> голова) -->
             <g id="part-legs"   class="robot-part" data-slot="legs"   filter="url(#shadow)"></g>
             <g id="part-armL"   class="robot-part" data-slot="armL"   filter="url(#shadow)"></g>
             <g id="part-armR"   class="robot-part" data-slot="armR"   filter="url(#shadow)"></g>
             <g id="part-body"   class="robot-part" data-slot="body"   filter="url(#shadow)"></g>
             <g id="part-head"   class="robot-part" data-slot="head"   filter="url(#shadow)"></g>
+
+            <!-- Стволы оружия в руках (поверх рук) -->
+            <g id="part-weaponL" class="robot-part" data-slot="weaponL" filter="url(#shadow)"></g>
+            <g id="part-weaponR" class="robot-part" data-slot="weaponR" filter="url(#shadow)"></g>
           </svg>
 
           <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
