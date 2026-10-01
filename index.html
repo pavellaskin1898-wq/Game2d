@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ангар — Конструктор робота 2D</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>🏗️ Ангар: Робот-конструктор</h1>
+      <div class="total-stats" id="totalStats"></div>
+    </header>
+
+    <main class="content">
+      <!-- Ангар с роботом -->
+      <section class="hangar-wrap">
+        <div class="hangar" id="hangar">
+          <svg id="robotSvg" viewBox="0 0 400 520" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2b3648"/>
+                <stop offset="1" stop-color="#1c2331"/>
+              </linearGradient>
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+
+            <!-- Части робота (порядок отрисовки: ноги -> руки -> тело -> голова) -->
+            <g id="part-legs"   class="robot-part" data-slot="legs"   filter="url(#shadow)"></g>
+            <g id="part-armL"   class="robot-part" data-slot="armL"   filter="url(#shadow)"></g>
+            <g id="part-armR"   class="robot-part" data-slot="armR"   filter="url(#shadow)"></g>
+            <g id="part-body"   class="robot-part" data-slot="body"   filter="url(#shadow)"></g>
+            <g id="part-head"   class="robot-part" data-slot="head"   filter="url(#shadow)"></g>
+          </svg>
+
+          <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
+        </div>
+
+        <div class="hint">Нажмите на деталь робота или выберите слот справа, чтобы заменить её.</div>
+      </section>
+
+      <!-- Панель управления -->
+      <aside class="panel">
+        <div class="slots" id="slotsList"></div>
+
+        <div class="picker" id="picker">
+          <div class="picker-title" id="pickerTitle">Выберите слот</div>
+          <div class="picker-cards" id="pickerCards"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="parts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
