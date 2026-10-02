@@ -20,6 +20,7 @@
       <div class="nav-btns">
         <button class="nav-btn" id="btnHangar">🏗️ Ангар</button>
         <button class="nav-btn pilot" id="btnPilotRoom">🪑 Комната пилота</button>
+        <button class="nav-btn arena" id="btnArena">🎯 Тренировочный ангар</button>
       </div>
     </header>
 
@@ -128,6 +129,29 @@
         </div>
       </section>
 
+      <!-- ===== ЭКРАН: ТРЕНИРОВОЧНЫЙ АНГАР (скрыт по умолчанию) ===== -->
+      <section class="arena-wrap" id="arenaWrap" hidden>
+        <div class="fighter-cards" id="fighterCards"></div>
+        <div class="arena-scene">
+          <svg id="battleSvg" viewBox="-10 -10 420 540" width="100%" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="hangar-floor-label">Полигон • Тренировочный ангар №3</div>
+          <div class="battle-result" id="battleResult" hidden></div>
+        </div>
+        <div class="arena-controls">
+          <div class="aim-block">
+            <div class="aim-title">🎯 Прицел (по какой детали бить):</div>
+            <div class="aim-picker" id="aimPicker"></div>
+          </div>
+          <div class="target-info" id="targetInfo"></div>
+          <div class="action-block">
+            <button class="attack-btn" id="btnAttack">🔫 ОГОНЬ!</button>
+            <button class="reset-btn" id="btnReset">🔄 Новый бой</button>
+          </div>
+        </div>
+        <div class="battle-log" id="battleLog"></div>
+        <div class="hint">Учебные мехи: 🟦 «Разведчик» (лёгкая броня), 🟨 «Линия фронта» (средняя), 🟥 «Осадная крепость» (тяжёлая). Сбивайте ноги — цель замедлится, оружие — цель не сможет стрелять, кабина или голова — мех уничтожен.</div>
+      </section>
+
       <!-- Ангар с роботом -->
       <section class="hangar-wrap" id="hangarWrap">
         <div class="hangar" id="hangar">
@@ -187,6 +211,7 @@
   <script src="parts.js"></script>
   <script src="decor.js"></script>
   <script src="pilotroom.js"></script>
+  <script src="arena.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

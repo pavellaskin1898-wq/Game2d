@@ -290,22 +290,36 @@ const PILOTS = {
   },
 };
 
+const arenaWrapEl = document.getElementById("arenaWrap");
+const btnArena = document.getElementById("btnArena");
+
 function showScreen(which) {
   const isRoom = which === "room";
+  const isArena = which === "arena";
   pilotRoomEl.hidden = !isRoom;
-  hangarWrapEl.hidden = isRoom;
-  if (panelEl) panelEl.style.display = isRoom ? "none" : "";
+  arenaWrapEl.hidden = !isArena;
+  hangarWrapEl.hidden = isRoom || isArena;
+  if (panelEl) panelEl.style.display = isRoom || isArena ? "none" : "";
   screenTitle.textContent = isRoom
     ? "🪑 Комната пилота: рабочий стол и личные дела"
-    : "🏗️ Ангар: Мех-конструктор (с пилотом)";
-  btnHangar.classList.toggle("active", !isRoom);
+    : isArena
+      ? "🎯 Тренировочный ангар: боевые учения"
+      : "🏗️ Ангар: Мех-конструктор (с пилотом)";
+  btnHangar.classList.toggle("active", !isRoom && !isArena);
   btnPilotRoom.classList.toggle("active", isRoom);
+  btnArena.classList.toggle("active", isArena);
   if (!isRoom && cockpitTip) cockpitTip.classList.remove("visible");
   closeDossier();
+  if (isArena && window.ARENA) window.ARENA.enter(); // новый бой при входе
 }
 
 btnHangar.addEventListener("click", () => showScreen("hangar"));
 btnPilotRoom.addEventListener("click", () => showScreen("room"));
+btnArena.addEventListener("click", () => showScreen("arena"));
+
+// Передать арене текущую сборку меха
+window.ARENA_GET_STATE = () => ({ equipped, weapons });
+if (window.ARENA) window.ARENA.init();
 
 // Вставляем папки в SVG-сцену комнаты
 if (PR) {
@@ -356,5 +370,23 @@ if (bodyG) {
   if (wrap) wrap.appendChild(goBtn);
   goBtn.addEventListener("click", () => showScreen("room"));
 }
+
+// Кнопка «Тренировочный ангар» на мехе
+const hangarBox = document.getElementById("hangar");
+if (hangarBox) {
+  const arenaBtn = document.createElement("button");
+  arenaBtn.id = "goArenaBtn";
+  arenaBtn.className = "go-pilot-btn arena-btn";
+  arenaBtn.textContent = "🎯 Тренировочный ангар";
+  arenaBtn.title = "Боевые учения: три учебных меха против вас";
+  arenaBtn.style.left = "auto";
+  arenaBtn.style.right = "12px";
+  hangarBox.appendChild(arenaBtn);
+  arenaBtn.addEventListener("click", () => showScreen("arena"));
+}
+
+// Подсказки на экране ангара — с упоминанием арены
+const hintEl = document.querySelector(".hangar-wrap .hint");
+if (hintEl) hintEl.textContent += " Кнопки внизу: 🪑 комната пилота и 🎯 тренировочный ангар.";
 
 showScreen("hangar");

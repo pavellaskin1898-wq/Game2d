@@ -216,5 +216,8 @@
       if (b) b.innerHTML = backLayer();
       if (f) f.innerHTML = frontLayer();
     },
+    // доступ к слоям для тренировочного ангара (arena.js)
+    backLayer,
+    frontLayer,
   };
 })();
