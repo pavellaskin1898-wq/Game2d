@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>MECH COMMAND — Front Mission Style Prototype</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="screen" width="640" height="360"></canvas>
+
+  <!-- ===== ЭКРАН АНГАРА (HTML-панели поверх canvas-фона) ===== -->
+  <div id="hangarUI" class="overlay">
+    <div class="panel parts-panel">
+      <div class="panel-title">SELECT PARTS</div>
+      <div id="slotList" class="slot-list"></div>
+    </div>
+    <div class="panel status-panel">
+      <div class="panel-title">STATUS</div>
+      <div id="statusTable"></div>
+      <div class="panel-title t2">ACTION</div>
+      <button id="btnBattle" class="big-btn">▶ TRAINING BATTLE</button>
+      <button id="btnPilot" class="small-btn">PILOT ROOM</button>
+    </div>
+    <div class="panel part-detail" id="partDetail" hidden></div>
+    <div class="hint">CLICK A SLOT, THEN CLICK A PART TIER TO EQUIP · ESC/HANGAR BTN TO CLOSE PANELS</div>
+  </div>
+
+  <!-- ===== ЭКРАН БОЯ ===== -->
+  <div id="battleUI" class="overlay" hidden>
+    <div class="panel turn-banner" id="turnBanner">PLAYER TURN</div>
+    <div class="panel enemy-info" id="enemyInfo"></div>
+    <div class="panel action-menu" id="actionMenu" hidden>
+      <div class="panel-title">ORDER</div>
+      <button data-act="move"   class="act-btn">1. MOVE</button>
+      <button data-act="attack" class="act-btn">2. ATTACK</button>
+      <button data-act="wait"   class="act-btn">3. WAIT</button>
+    </div>
+    <div class="panel battle-log" id="battleLog"></div>
+    <div class="panel target-hint" id="targetHint" hidden>PICK TARGET CELL (LEFT CLICK) · RIGHT CLICK = CANCEL</div>
+  </div>
+
+  <!-- ===== ЭКРАН РЕЗУЛЬТАТА ===== -->
+  <div id="resultUI" class="overlay" hidden>
+    <div class="panel result-panel">
+      <div id="resultTitle" class="result-title"></div>
+      <div id="resultReward" class="result-reward"></div>
+      <button id="btnResultOk" class="big-btn">CONTINUE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Порядок важен: данные → спрайты → классы → игра -->
+<script src="parts.js"></script>
+<script src="mech.js"></script>
+<script src="battle.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

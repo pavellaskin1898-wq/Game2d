@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>MECH TACTICS: DIABLO — Front Mission style</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= ANGAR ================= -->
+  <section id="scr-hangar">
+    <div class="left">
+      <canvas id="cv" width="960" height="540"></canvas>
+      <div class="hangar-actions">
+        <button id="btn-deploy" class="big">▶ DEPLOY TO TRAINING GRID</button>
+        <button id="btn-mission" class="big alt">🗺 CITY MAP — SELECT MISSION</button>
+        <span class="hintline">Torso = Body+Head (отдельной головы нет). Вес снижает SPEED, перегруз отключает подъёмы.</span>
+      </div>
+    </div>
+    <aside class="right">
+      <h2>SELECT PARTS</h2>
+      <div id="parts-panel" class="scroll"></div>
+      <h2>STATUS</h2>
+      <div id="status"></div>
+    </aside>
+  </section>
+
+  <!-- ============ КАРТА ГОРОДА — ВЫБОР ЗАДАНИЯ ============ -->
+  <section id="scr-map" style="display:none">
+    <div class="map-wrap">
+      <canvas id="cvm" width="960" height="540"></canvas>
+      <div id="map-info">—</div>
+      <div id="map-hint">Клик по метке локации — брифинг задания · Enter/Space — принять бой · Esc — в ангар</div>
+      <div class="mission-card" id="mission-card">
+        <h3 id="mc-title">SELECT MISSION</h3>
+        <p id="mc-desc"></p>
+        <button id="mc-deploy" class="big">▶ DEPLOY</button>
+        <span id="mc-reward" class="hintline"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= БОЙ ================= -->
+  <section id="scr-battle" style="display:none">
+    <div class="topbar">
+      <span id="turn-label">PLAYER TURN</span>
+      <span id="phud"></span>
+      <button id="btn-leave">◀ LEAVE GRID</button>
+    </div>
+    <div class="battle-wrap">
+      <canvas id="cvb" width="960" height="540"></canvas>
+      <div id="unit-info">—</div>
+      <div id="hint">MOVE then ATTACK (or WAIT)</div>
+      <div class="actions">
+        <button id="act-move">1 MOVE</button>
+        <button id="act-attack">2 ATTACK</button>
+        <button id="act-wait">3 WAIT</button>
+        <button id="btn-endturn">END TURN</button>
+      </div>
+      <div id="log" class="scroll"></div>
+    </div>
+    <div id="scr-result" style="display:none">
+      <div class="result-box">
+        <h1 id="result-title">MISSION COMPLETE</h1>
+        <p id="result-text"></p>
+        <button id="btn-retry">RETRY</button>
+        <button id="btn-back">RETURN TO HANGAR</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script src="sprites.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

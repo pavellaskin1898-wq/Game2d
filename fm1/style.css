@@ -1,0 +1,111 @@
+/* MECH COMMAND — ретро-UI в стиле Front Mission 1st */
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html,body { height:100%; background:#0a0c10; }
+body { overflow:auto; }
+
+body {
+  font-family:"Courier New", Courier, monospace;
+  color:#dfe6ee;
+  display:flex; align-items:center; justify-content:center;
+}
+
+#app { position:relative; width:min(100vw, calc(100vh * 16 / 9)); max-width:1280px; margin:auto; }
+
+/* Canvas масштабируется CSS, пиксельная чёткость обязательна */
+#screen {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: auto;
+  aspect-ratio: 16/9;
+  display:block;
+  background:#000;
+  border:2px solid #2a3546;
+  box-shadow:0 0 40px rgba(0,0,0,.8);
+}
+
+.overlay { position:absolute; inset:0; pointer-events:none; }
+.overlay .panel, .overlay button { pointer-events:auto; }
+
+/* ---------- общие панели ---------- */
+.panel {
+  position:absolute;
+  background:rgba(8,12,18,.92);
+  border:2px solid #4a5c78;
+  box-shadow:inset 0 0 0 1px #1b2534, 3px 3px 0 rgba(0,0,0,.6);
+  font-size:11px;
+  letter-spacing:.5px;
+}
+.panel-title {
+  background:#243449; color:#ffd23f;
+  padding:3px 6px; font-weight:bold; font-size:10px;
+  border-bottom:2px solid #4a5c78; text-transform:uppercase;
+}
+.panel-title.t2 { margin-top:6px; border-top:2px solid #4a5c78; border-bottom:none; }
+
+button {
+  font-family:inherit; cursor:pointer; text-transform:uppercase;
+  background:#1b2a3d; color:#dfe6ee; border:2px solid #4a5c78;
+  padding:4px 8px; font-size:11px; letter-spacing:1px;
+}
+button:hover { background:#2f4a6e; color:#fff; }
+button:active { transform:translate(1px,1px); }
+button.sel { background:#ffd23f; color:#111; border-color:#fff; }
+button:disabled { opacity:.35; cursor:default; }
+
+.big-btn { display:block; width:calc(100% - 12px); margin:6px; padding:8px;
+  background:#7a1f1f; border-color:#ff6b5e; color:#ffe9e6; font-weight:bold; }
+.big-btn:hover { background:#a32a2a; }
+.small-btn { display:block; width:calc(100% - 12px); margin:0 6px 6px; }
+
+.hint { position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+  font-size:9px; color:#8fa2bd; letter-spacing:1px; white-space:nowrap; }
+
+/* ---------- ангар: SELECT PARTS ---------- */
+.parts-panel { left:8px; top:8px; width:250px; max-height:calc(100% - 40px); overflow-y:auto; }
+.slot-list { padding:5px; }
+.slot-row { display:flex; gap:4px; margin-bottom:4px; align-items:stretch; }
+.slot-name {
+  flex:0 0 74px; background:#141d2b; border:2px solid #33445c;
+  padding:3px 4px; font-size:9px; cursor:pointer; color:#aebdd2;
+}
+.slot-name:hover { border-color:#ffd23f; color:#fff; }
+.slot-name.active { border-color:#ffd23f; background:#233448; color:#ffd23f; }
+.slot-parts { flex:1; display:flex; gap:3px; }
+.pbtn { flex:1; padding:3px 2px; font-size:9px; text-align:center; }
+.pbtn.eq { background:#3f6b3f; border-color:#7fd07f; color:#dfffdc; }
+.pbtn.locked { background:#141d2b; color:#556070; border-color:#26313f; }
+
+/* статус */
+.status-panel { right:8px; top:8px; width:190px; }
+#statusTable { padding:5px 6px; line-height:1.55; }
+.st-line { display:flex; justify-content:space-between; }
+.st-line b { color:#ffd23f; }
+.warn { color:#ff6b5e; }
+
+/* карточка детали */
+.part-detail { left:266px; top:8px; width:210px; padding:6px; line-height:1.5; }
+.part-detail .pd-name { color:#fff; font-weight:bold; margin-bottom:3px; }
+.pd-tier-L { color:#7fd0ff; } .pd-tier-M { color:#ffd23f; } .pd-tier-H { color:#ff8a66; }
+
+/* ---------- бой ---------- */
+.turn-banner { left:50%; top:6px; transform:translateX(-50%); padding:4px 14px;
+  color:#ffd23f; font-weight:bold; background:rgba(8,12,18,.92); }
+.turn-banner.enemy { color:#ff6b5e; }
+.enemy-info { right:8px; top:8px; width:180px; padding:5px 6px; line-height:1.5; }
+.action-menu { left:8px; bottom:8px; width:150px; padding:0 5px 5px; }
+.act-btn { display:block; width:100%; margin-top:4px; }
+.battle-log { left:166px; bottom:8px; width:300px; height:74px; padding:4px 6px;
+  overflow:hidden; font-size:10px; line-height:1.4; color:#bcd; }
+.battle-log div:first-child { color:#fff; }
+.target-hint { left:50%; bottom:90px; transform:translateX(-50%); padding:4px 10px; color:#7fd0ff; }
+
+/* ---------- результат ---------- */
+.result-panel { left:50%; top:50%; transform:translate(-50%,-50%);
+  width:280px; padding:14px; text-align:center; }
+.result-title { font-size:20px; font-weight:bold; margin-bottom:10px; color:#ffd23f; }
+.result-title.lose { color:#ff6b5e; }
+.result-reward { font-size:11px; line-height:1.6; margin-bottom:12px; color:#cfe; }
+
+/* полоски HP в canvas-подписях не нужны — всё рисуем на холсте */

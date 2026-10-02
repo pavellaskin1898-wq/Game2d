@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ангар — Мех с пилотом 2D</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<link rel="stylesheet" href="style.css">
+  <style>
+    #robotSvg, .hangar svg, .room-scene svg { shape-rendering: crispEdges; image-rendering: pixelated; }
+    /* декор ангара — только фон, клики проходят сквозь него к меху */
+    #decorBack, #decorFront { pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1 id="screenTitle">🏗️ Ангар: Мех-конструктор (с пилотом)</h1>
+      <div class="total-stats" id="totalStats"></div>
+      <div class="nav-btns">
+        <button class="nav-btn" id="btnHangar">🏗️ Ангар</button>
+        <button class="nav-btn pilot" id="btnPilotRoom">🪑 Комната пилота</button>
+        <button class="nav-btn arena" id="btnArena">🎯 Тренировочный ангар</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ===== ЭКРАН: КОМНАТА ПИЛОТА (скрыт по умолчанию) ===== -->
+      <section class="pilot-room" id="pilotRoom" hidden>
+        <div class="room-scene">
+          <svg viewBox="0 0 900 560" width="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#3a4258"/><stop offset="1" stop-color="#2a3143"/>
+              </linearGradient>
+              <linearGradient id="deskGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#8a5a34"/><stop offset="1" stop-color="#6b421f"/>
+              </linearGradient>
+              <linearGradient id="lampLight" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/>
+                <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+              </linearGradient>
+              <filter id="folderShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+
+            <!-- стена и пол комнаты -->
+            <rect x="0" y="0" width="900" height="400" fill="url(#wallGrad)"/>
+            <rect x="0" y="400" width="900" height="160" fill="#20222c"/>
+            <rect x="0" y="398" width="900" height="6" fill="#171921"/>
+
+            <!-- окно с видом на ангар -->
+            <rect x="60" y="60" width="220" height="160" rx="6" fill="#101828" stroke="#55617a" stroke-width="8"/>
+            <line x1="170" y1="64" x2="170" y2="216" stroke="#55617a" stroke-width="6"/>
+            <line x1="64" y1="140" x2="276" y2="140" stroke="#55617a" stroke-width="6"/>
+            <!-- силуэт меха за окном -->
+            <g opacity="0.85">
+              <circle cx="120" cy="90" r="4" fill="#ffd23f"/>
+              <circle cx="150" cy="82" r="2.5" fill="#fff" opacity="0.8"/>
+              <path d="M150 200 L150 150 M138 200 L142 160 M162 200 L158 160" stroke="#0d1420" stroke-width="10"/>
+              <rect x="136" y="140" width="28" height="34" rx="4" fill="#0d1420"/>
+              <rect x="142" y="126" width="16" height="16" rx="3" fill="#0d1420"/>
+              <polygon points="140,118 160,118 150,108" fill="#0d1420"/>
+              <rect x="128" y="196" width="44" height="8" fill="#0d1420"/>
+            </g>
+
+            <!-- плакат «Слава пилотам мехов» -->
+            <g transform="rotate(-1.5 700 130)">
+              <rect x="600" y="55" width="200" height="150" rx="6" fill="#f4ecd8" stroke="#3a3226" stroke-width="5"/>
+              <polygon points="700,80 715,118 755,118 723,141 735,180 700,157 665,180 677,141 645,118 685,118" fill="#c0392b"/>
+              <text x="700" y="200" text-anchor="middle" font-family="Arial Black,Arial" font-weight="bold" font-size="15" fill="#3a3226">СЛАВА МЕХАНИКАМ!</text>
+            </g>
+
+            <!-- настольная лампа (свет) -->
+            <polygon points="330,250 300,430 560,430 520,250" fill="url(#lampLight)"/>
+            <rect x="352" y="420" width="70" height="10" rx="4" fill="#2e3440"/>
+            <line x1="387" y1="420" x2="387" y2="300" stroke="#2e3440" stroke-width="8"/>
+            <line x1="387" y1="300" x2="440" y2="262" stroke="#2e3440" stroke-width="8"/>
+            <path d="M418 246 L470 246 L456 286 L432 286 Z" fill="#3f7d5a" stroke="#2b5a40" stroke-width="4"/>
+            <ellipse cx="444" cy="288" rx="12" ry="4" fill="#ffe9a8"/>
+
+            <!-- письменный стол -->
+            <rect x="120" y="428" width="680" height="30" rx="8" fill="url(#deskGrad)" stroke="#4a2d12" stroke-width="4"/>
+            <rect x="150" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="744" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="560" y="458" width="180" height="70" rx="6" fill="#7a4c22" stroke="#4a2d12" stroke-width="4"/>
+            <circle cx="650" cy="493" r="8" fill="#c9a227"/>
+
+            <!-- кружка с кофе -->
+            <g transform="translate(238 386)">
+              <path d="M-6 -2 Q-14 -12 -4 -20 M4 -4 Q12 -14 2 -24" stroke="#cbd5e4" stroke-width="3" fill="none" opacity="0.6"/>
+              <rect x="-16" y="0" width="34" height="34" rx="6" fill="#dfe6ef" stroke="#9aa7bb" stroke-width="3"/>
+              <path d="M18 8 Q32 12 18 26" fill="none" stroke="#9aa7bb" stroke-width="5"/>
+              <ellipse cx="1" cy="2" rx="15" ry="4" fill="#5b3a1e"/>
+            </g>
+
+            <!-- ДВЕ ПАПКИ С ДЕЛАМИ ПИЛОТОВ (кликабельные) -->
+            <g class="folder folder-male" id="folderMale" transform="translate(430 344) rotate(-7 120 150)" data-pilot="male">
+              <title>Дело пилота: Артём «Ястреб» Соколов</title>
+            </g>
+            <g class="folder folder-female" id="folderFemale" transform="translate(560 350) rotate(6 120 150)" data-pilot="female">
+              <title>Дело пилота: Алиса «Ласточка» Верещагина</title>
+            </g>
+
+            <!-- карандаши в стакане -->
+            <g transform="translate(760 392)">
+              <rect x="-14" y="0" width="30" height="36" rx="5" fill="#33415c" stroke="#22304a" stroke-width="3"/>
+              <line x1="-6" y1="4" x2="-12" y2="-26" stroke="#ffd23f" stroke-width="5"/>
+              <line x1="2" y1="4" x2="2" y2="-32" stroke="#ff5c5c" stroke-width="5"/>
+              <line x1="10" y1="4" x2="16" y2="-24" stroke="#4dff88" stroke-width="5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="hint room-hint">Рабочий стол дежурного по ангара. На столе — две папки с личными делами пилотов. Нажмите на папку, чтобы открыть дело.</div>
+
+        <!-- Карточка дела пилота -->
+        <div class="dossier" id="dossier" hidden>
+          <div class="dossier-inner">
+            <button class="dossier-close" id="dossierClose" title="Закрыть дело">✖</button>
+            <div class="dossier-photo" id="dossierPhoto"></div>
+            <div class="dossier-info">
+              <h2 id="dossierName"></h2>
+              <div class="dossier-rank" id="dossierRank"></div>
+              <ul class="dossier-list" id="dossierList"></ul>
+              <div class="dossier-mech" id="dossierMech"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ЭКРАН: ТРЕНИРОВОЧНЫЙ АНГАР (скрыт по умолчанию) ===== -->
+      <section class="arena-wrap" id="arenaWrap" hidden>
+        <div class="fighter-cards" id="fighterCards"></div>
+        <div class="arena-scene">
+          <svg id="battleSvg" viewBox="-10 -10 420 540" width="100%" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="hangar-floor-label">Полигон • Тренировочный ангар №3</div>
+          <div class="battle-result" id="battleResult" hidden></div>
+        </div>
+        <div class="arena-controls">
+          <div class="aim-block">
+            <div class="aim-title">🎯 Прицел (по какой детали бить):</div>
+            <div class="aim-picker" id="aimPicker"></div>
+          </div>
+          <div class="target-info" id="targetInfo"></div>
+          <div class="action-block">
+            <button class="attack-btn" id="btnAttack">🔫 ОГОНЬ!</button>
+            <button class="reset-btn" id="btnReset">🔄 Новый бой</button>
+          </div>
+        </div>
+        <div class="battle-log" id="battleLog"></div>
+        <div class="hint">Учебные мехи: 🟦 «Разведчик» (лёгкая броня), 🟨 «Линия фронта» (средняя), 🟥 «Осадная крепость» (тяжёлая). Сбивайте ноги — цель замедлится, оружие — цель не сможет стрелять, кабина или голова — мех уничтожен.</div>
+      </section>
+
+      <!-- Ангар с роботом -->
+      <section class="hangar-wrap" id="hangarWrap">
+        <div class="hangar" id="hangar">
+          <svg id="robotSvg" viewBox="-10 -10 420 540" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2b3648"/>
+                <stop offset="1" stop-color="#1c2331"/>
+              </linearGradient>
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+
+            <!-- ===== ПИКСЕЛЬНЫЙ ДЕКОР АНГАРА (генерируется в decor.js) ===== -->
+            <g id="decorBack"></g>
+
+            <!-- Оружие на спине (за роботом) -->
+            <g id="part-weaponBack" class="robot-part" data-slot="weaponBack"></g>
+
+            <!-- Части робота (порядок отрисовки: ноги -> руки -> тело -> голова) -->
+            <g id="part-legs"   class="robot-part" data-slot="legs"   filter="url(#shadow)"></g>
+            <g id="part-armL"   class="robot-part" data-slot="armL"   filter="url(#shadow)"></g>
+            <g id="part-armR"   class="robot-part" data-slot="armR"   filter="url(#shadow)"></g>
+            <g id="part-body"   class="robot-part" data-slot="body"   filter="url(#shadow)"></g>
+            <g id="part-head"   class="robot-part" data-slot="head"   filter="url(#shadow)"></g>
+
+            <!-- Стволы оружия в руках (поверх рук) -->
+            <g id="part-weaponL" class="robot-part" data-slot="weaponL" filter="url(#shadow)"></g>
+            <g id="part-weaponR" class="robot-part" data-slot="weaponR" filter="url(#shadow)"></g>
+
+            <!-- Декор перед мехом: ящики, бочки, конус, тележка с запчастями -->
+            <g id="decorFront"></g>
+          </svg>
+
+          <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
+
+          <!-- Кабина пилота крупным планом (показывается при наведении на тело меха) -->
+          <div class="cockpit-tip" id="cockpitTip"></div>
+        </div>
+
+        <div class="hint">Нажмите на деталь или кабину пилота на мехе, чтобы заменить её. Наведите курсор на «Тело» — покажем кабину крупным планом.</div>
+      </section>
+
+      <!-- Панель управления -->
+      <aside class="panel">
+        <div class="slots" id="slotsList"></div>
+
+        <div class="picker" id="picker">
+          <div class="picker-title" id="pickerTitle">Выберите слот</div>
+          <div class="picker-cards" id="pickerCards"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="parts.js"></script>
+  <script src="decor.js"></script>
+  <script src="pilotroom.js"></script>
+  <script src="arena.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

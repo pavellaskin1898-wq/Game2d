@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>MECH COMMAND — Front Mission Style Prototype</title>
+<style>
+/* MECH COMMAND — ретро-UI в стиле Front Mission 1st */
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html,body { height:100%; background:#0a0c10; }
+body { overflow:auto; }
+
+body {
+  font-family:"Courier New", Courier, monospace;
+  color:#dfe6ee;
+  display:flex; align-items:center; justify-content:center;
+}
+
+#app { position:relative; width:min(100vw, calc(100vh * 16 / 9)); max-width:1280px; margin:auto; }
+
+/* Canvas масштабируется CSS, пиксельная чёткость обязательна */
+#screen {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: auto;
+  aspect-ratio: 16/9;
+  display:block;
+  background:#000;
+  border:2px solid #2a3546;
+  box-shadow:0 0 40px rgba(0,0,0,.8);
+}
+
+.overlay { position:absolute; inset:0; pointer-events:none; }
+.overlay .panel, .overlay button { pointer-events:auto; }
+
+/* ---------- общие панели ---------- */
+.panel {
+  position:absolute;
+  background:rgba(8,12,18,.92);
+  border:2px solid #4a5c78;
+  box-shadow:inset 0 0 0 1px #1b2534, 3px 3px 0 rgba(0,0,0,.6);
+  font-size:11px;
+  letter-spacing:.5px;
+}
+.panel-title {
+  background:#243449; color:#ffd23f;
+  padding:3px 6px; font-weight:bold; font-size:10px;
+  border-bottom:2px solid #4a5c78; text-transform:uppercase;
+}
+.panel-title.t2 { margin-top:6px; border-top:2px solid #4a5c78; border-bottom:none; }
+
+button {
+  font-family:inherit; cursor:pointer; text-transform:uppercase;
+  background:#1b2a3d; color:#dfe6ee; border:2px solid #4a5c78;
+  padding:4px 8px; font-size:11px; letter-spacing:1px;
+}
+button:hover { background:#2f4a6e; color:#fff; }
+button:active { transform:translate(1px,1px); }
+button.sel { background:#ffd23f; color:#111; border-color:#fff; }
+button:disabled { opacity:.35; cursor:default; }
+
+.big-btn { display:block; width:calc(100% - 12px); margin:6px; padding:8px;
+  background:#7a1f1f; border-color:#ff6b5e; color:#ffe9e6; font-weight:bold; }
+.big-btn:hover { background:#a32a2a; }
+.small-btn { display:block; width:calc(100% - 12px); margin:0 6px 6px; }
+
+.hint { position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+  font-size:9px; color:#8fa2bd; letter-spacing:1px; white-space:nowrap; }
+
+/* ---------- ангар: SELECT PARTS ---------- */
+.parts-panel { left:8px; top:8px; width:250px; max-height:calc(100% - 40px); overflow-y:auto; }
+.slot-list { padding:5px; }
+.slot-row { display:flex; gap:4px; margin-bottom:4px; align-items:stretch; }
+.slot-name {
+  flex:0 0 74px; background:#141d2b; border:2px solid #33445c;
+  padding:3px 4px; font-size:9px; cursor:pointer; color:#aebdd2;
+}
+.slot-name:hover { border-color:#ffd23f; color:#fff; }
+.slot-name.active { border-color:#ffd23f; background:#233448; color:#ffd23f; }
+.slot-parts { flex:1; display:flex; gap:3px; }
+.pbtn { flex:1; padding:3px 2px; font-size:9px; text-align:center; }
+.pbtn.eq { background:#3f6b3f; border-color:#7fd07f; color:#dfffdc; }
+.pbtn.locked { background:#141d2b; color:#556070; border-color:#26313f; }
+
+/* статус */
+.status-panel { right:8px; top:8px; width:190px; }
+#statusTable { padding:5px 6px; line-height:1.55; }
+.st-line { display:flex; justify-content:space-between; }
+.st-line b { color:#ffd23f; }
+.warn { color:#ff6b5e; }
+
+/* карточка детали */
+.part-detail { left:266px; top:8px; width:210px; padding:6px; line-height:1.5; }
+.part-detail .pd-name { color:#fff; font-weight:bold; margin-bottom:3px; }
+.pd-tier-L { color:#7fd0ff; } .pd-tier-M { color:#ffd23f; } .pd-tier-H { color:#ff8a66; }
+
+/* ---------- бой ---------- */
+.turn-banner { left:50%; top:6px; transform:translateX(-50%); padding:4px 14px;
+  color:#ffd23f; font-weight:bold; background:rgba(8,12,18,.92); }
+.turn-banner.enemy { color:#ff6b5e; }
+.enemy-info { right:8px; top:8px; width:180px; padding:5px 6px; line-height:1.5; }
+.action-menu { left:8px; bottom:8px; width:150px; padding:0 5px 5px; }
+.act-btn { display:block; width:100%; margin-top:4px; }
+.battle-log { left:166px; bottom:8px; width:300px; height:74px; padding:4px 6px;
+  overflow:hidden; font-size:10px; line-height:1.4; color:#bcd; }
+.battle-log div:first-child { color:#fff; }
+.target-hint { left:50%; bottom:90px; transform:translateX(-50%); padding:4px 10px; color:#7fd0ff; }
+
+/* ---------- результат ---------- */
+.result-panel { left:50%; top:50%; transform:translate(-50%,-50%);
+  width:280px; padding:14px; text-align:center; }
+.result-title { font-size:20px; font-weight:bold; margin-bottom:10px; color:#ffd23f; }
+.result-title.lose { color:#ff6b5e; }
+.result-reward { font-size:11px; line-height:1.6; margin-bottom:12px; color:#cfe; }
+
+/* полоски HP в canvas-подписях не нужны — всё рисуем на холсте */
+
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="screen" width="640" height="360"></canvas>
+
+  <!-- ===== ЭКРАН АНГАРА (HTML-панели поверх canvas-фона) ===== -->
+  <div id="hangarUI" class="overlay">
+    <div class="panel parts-panel">
+      <div class="panel-title">SELECT PARTS</div>
+      <div id="slotList" class="slot-list"></div>
+    </div>
+    <div class="panel status-panel">
+      <div class="panel-title">STATUS</div>
+      <div id="statusTable"></div>
+      <div class="panel-title t2">ACTION</div>
+      <button id="btnBattle" class="big-btn">▶ TRAINING BATTLE</button>
+      <button id="btnPilot" class="small-btn">PILOT ROOM</button>
+    </div>
+    <div class="panel part-detail" id="partDetail" hidden></div>
+    <div class="hint">CLICK A SLOT, THEN CLICK A PART TIER TO EQUIP · ESC/HANGAR BTN TO CLOSE PANELS</div>
+  </div>
+
+  <!-- ===== ЭКРАН БОЯ ===== -->
+  <div id="battleUI" class="overlay" hidden>
+    <div class="panel turn-banner" id="turnBanner">PLAYER TURN</div>
+    <div class="panel enemy-info" id="enemyInfo"></div>
+    <div class="panel action-menu" id="actionMenu" hidden>
+      <div class="panel-title">ORDER</div>
+      <button data-act="move"   class="act-btn">1. MOVE</button>
+      <button data-act="attack" class="act-btn">2. ATTACK</button>
+      <button data-act="wait"   class="act-btn">3. WAIT</button>
+    </div>
+    <div class="panel battle-log" id="battleLog"></div>
+    <div class="panel target-hint" id="targetHint" hidden>PICK TARGET CELL (LEFT CLICK) · RIGHT CLICK = CANCEL</div>
+  </div>
+
+  <!-- ===== ЭКРАН РЕЗУЛЬТАТА ===== -->
+  <div id="resultUI" class="overlay" hidden>
+    <div class="panel result-panel">
+      <div id="resultTitle" class="result-title"></div>
+      <div id="resultReward" class="result-reward"></div>
+      <button id="btnResultOk" class="big-btn">CONTINUE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Порядок важен: данные → спрайты → классы → игра -->
+<script>
+"use strict";
+/* ===== parts.js ===== */
+'use strict';
+/* ============================================================
+ * parts.js — данные деталей и оружия (5 слотов × 3 комплекта)
+ * Каждая деталь: weight, hp, df (броня), а также бонусы к
+ * acc/eva/move. Оружие встроено в детали рук: at/ammo/range.
+ * ============================================================ */
+
+// Комплекты (tiers): L — лёгкий, M — средний, H — тяжёлый
+const TIERS = {
+  L: { name:'LIGHT',   color:'#7fd0ff' },
+  M: { name:'MEDIUM',  color:'#ffd23f' },
+  H: { name:'HEAVY',   color:'#ff8a66' },
+};
+
+// Слоты меха
+const SLOTS = ['head','armR','armL','body','legs'];
+const SLOT_NAMES = {
+  head:'HEAD', armR:'ARM R', armL:'ARM L', body:'TORSO', legs:'LEGS',
+};
+
+// ---- База данных деталей ----------------------------------
+// w=вес(kg) hp df acc eva move | weapon:{at,ammo,rng} только у рук
+const PART_DB = [
+  // ГОЛОВА
+  { id:'head-L', slot:'head', tier:'L', name:'SCOUT OPTICS',  w:15, hp:20, df:2, acc:+10, eva:+5, move:0, unlocked:true },
+  { id:'head-M', slot:'head', tier:'M', name:'COMMAND VISOR', w:35, hp:35, df:5, acc:+5,  eva:0,  move:0, unlocked:true },
+  { id:'head-H', slot:'head', tier:'H', name:'SIEGE CROWN',   w:70, hp:60, df:12,acc:0,   eva:-5, move:0, unlocked:false },
+
+  // ПРАВАЯ РУКА (оружейная)
+  { id:'armR-L', slot:'armR', tier:'L', name:'PULSE CANNON',  w:25, hp:25, df:3, acc:+5, eva:+5, move:0,
+    weapon:{ at:14, ammo:12, rng:5 }, unlocked:true },
+  { id:'armR-M', slot:'armR', tier:'M', name:'AC RAILGUN',    w:55, hp:40, df:7, acc:0,  eva:0,  move:0,
+    weapon:{ at:26, ammo:8,  rng:7 }, unlocked:true },
+  { id:'armR-H', slot:'armR', tier:'H', name:'GAUSS HAMMER',  w:95, hp:55, df:14,acc:-5, eva:-5, move:0,
+    weapon:{ at:44, ammo:5,  rng:4 }, unlocked:false },
+
+  // ЛЕВАЯ РУКА (оружейная)
+  { id:'armL-L', slot:'armL', tier:'L', name:'SMG SWARM',     w:22, hp:22, df:3, acc:+8, eva:+6, move:0,
+    weapon:{ at:10, ammo:16, rng:4 }, unlocked:true },
+  { id:'armL-M', slot:'armL', tier:'M', name:'SHOT WEAPON',   w:50, hp:38, df:7, acc:-2, eva:0,  move:0,
+    weapon:{ at:22, ammo:9,  rng:3 }, unlocked:true },
+  { id:'armL-H', slot:'armL', tier:'H', name:'ROCKET POD',    w:90, hp:52, df:13,acc:-8, eva:-6, move:0,
+    weapon:{ at:38, ammo:6,  rng:6 }, unlocked:false },
+
+  // КОРПУС (определяет максимальный груз)
+  { id:'body-L', slot:'body', tier:'L', name:'FRAME CORE',    w:60,  hp:45, df:6,  maxLoad:120, unlocked:true },
+  { id:'body-M', slot:'body', tier:'M', name:'GUARD CHASSIS', w:110, hp:75, df:12, maxLoad:220, unlocked:true },
+  { id:'body-H', slot:'body', tier:'H', name:'FORTRESS HULL', w:180, hp:120,df:22, maxLoad:360, unlocked:false },
+
+  // НОГИ
+  { id:'legs-L', slot:'legs', tier:'L', name:'SPRIDER UNITS', w:30, hp:30, df:4, move:+2, eva:+8, unlocked:true },
+  { id:'legs-M', slot:'legs', tier:'M', name:'DUO WALKERS',   w:65, hp:50, df:9, move:+1, eva:+2, unlocked:true },
+  { id:'legs-H', slot:'legs', tier:'H', name:'SIEGE TRACKS',  w:120,hp:80, df:16,move:0,  eva:-4, unlocked:false },
+];
+
+// Быстрый доступ по id
+const partById = id => PART_DB.find(p => p.id === id);
+
+// Пресеты врагов для тренировочных боёв (собираются из тех же деталей)
+const ENEMY_PRESETS = [
+  { label:'RECON MECH "WASP"',  loadout:['head-L','armR-L','armL-L','body-L','legs-L'], tint:'#7fd0ff' },
+  { label:'LINE MECH "JAGUAR"', loadout:['head-M','armR-M','armL-M','body-M','legs-M'], tint:'#ffd23f' },
+  { label:'SIEGE MECH "BASTION"',loadout:['head-H','armR-H','armL-H','body-H','legs-H'], tint:'#ff8a66' },
+];
+
+// Награды и разблокировки за победы (прогрессия MVP)
+const REWARDS = [
+  { credits:150, unlock:['head-H'] },
+  { credits:250, unlock:['armR-H','armL-H'] },
+  { credits:400, unlock:['body-H','legs-H'] },
+];
+
+
+/* ===== mech.js ===== */
+'use strict';
+/* ============================================================
+ * mech.js — класс Part, класс Mech (статы+спрайт) и пиксельный
+ * рендер меха. Спрайт собирается процедурно из "пиксельных"
+ * прямоугольников: силуэт в стиле Front Mission (модульный).
+ * ============================================================ */
+
+class Part {
+  constructor(data){ Object.assign(this, data); }
+  get isArmed(){ return !!this.weapon; }
+}
+
+class Mech {
+  /**
+   * @param {Object} opts { loadout:[ids], tint, name, facing:-1|1 }
+   */
+  constructor(opts){
+    this.name = opts.name || 'MECH';
+    this.tint = opts.tint || '#cfd8e3';   // основной цвет брони
+    this.facing = opts.facing || 1;        // 1 вправо, -1 влево
+    this.loadout = {};                     // slot -> Part
+    for (const id of opts.loadout) {
+      const p = new Part(partById(id));
+      this.loadout[p.slot] = p;
+    }
+    this.recalc();
+    // HP деталей инициализируются после расчёта
+    this.partHP = {};
+    for (const s of SLOTS) this.partHP[s] = this.loadout[s].hp;
+    this.ammo = {};                        // slot -> остаток боеприпасов
+    for (const s of SLOTS){
+      const p = this.loadout[s];
+      if (p.isArmed) this.ammo[s] = p.weapon.ammo;
+    }
+    this.x = 0; this.y = 0;                // позиция на тактической сетке
+  }
+
+  /** Пересчёт итоговых статов из деталей */
+  recalc(){
+    let hp=0, df=0, weight=0, acc=65, eva=4, move=2, at=0, maxRange=0, maxLoad=0;
+    for (const s of SLOTS){
+      const p = this.loadout[s];
+      hp += p.hp; df += p.df; weight += p.w;
+      acc += p.acc||0; eva += p.eva||0; move += p.move||0;
+      if (p.maxLoad) maxLoad = p.maxLoad;
+      if (p.isArmed){ at += p.weapon.at; maxRange = Math.max(maxRange, p.weapon.rng); }
+    }
+    this.baseStats = { hpMax:hp, df, weight, acc, eva, moveBase:move, at, maxRange, maxLoad };
+    // Формула скорости: базовая минус штраф за перегрузку (weight/maxLoad)
+    const overload = maxLoad > 0 ? weight / maxLoad : 1;
+    this.speedFactor = Math.max(0.3, 1.15 - overload * 0.55); // 1.0 при норме
+    this.stats = {
+      hpMax: hp,
+      df,
+      weight,
+      at,
+      range: maxRange,
+      move: Math.max(1, Math.round(move * this.speedFactor)),
+      acc: Math.min(95, Math.round(acc * (overload>1 ? 0.75 : 1))),
+      eva: Math.max(0, Math.round(eva * this.speedFactor)),
+    };
+  }
+
+  get alive(){ return this.hpNow > 0; }
+  get hpNow(){
+    let h=0; for (const s of SLOTS) h += Math.max(0, this.partHP[s]); return h;
+  }
+  /** Общий % разрушений для затемнения спрайта */
+  get dmgRatio(){
+    return 1 - this.hpNow / this.baseStats.hpMax;
+  }
+
+  /** Все руки с патронами и нужной дальностью до цели */
+  weaponsInRange(dist){
+    const out=[];
+    for (const s of ['armR','armL']){
+      const p=this.loadout[s];
+      if (p && p.isArmed && this.ammo[s]>0 && this.partHP[s]>0 && dist<=p.weapon.rng)
+        out.push(s);
+    }
+    return out;
+  }
+
+  /** Урон по слоту цели (AT оружия минус DF/2 детали) */
+  rollDamage(slotName, targetPartSlot){
+    const p=this.loadout[slotName];
+    const tp=targetPartSlot ? this.loadout[targetPartSlot] : null;
+    const tdf = targetPartSlot ? targetPartSlot.df : 0;
+    return Math.max(1, Math.round(p.weapon.at - tdf/2));
+  }
+
+  /* ---------- ПИКСЕЛЬНЫЙ РЕНДЕР ---------- */
+  /**
+   * Рисует мех в точке (px,py) — центр "ног". scale — размер клетки.
+   * style: 'player' | 'enemy'. Использует только fillRect => pixel-perfect.
+   */
+  draw(ctx, px, py, cell){
+    const f = this.facing;
+    const dmg = this.dmgRatio;
+    // Палитра: броня, тень, акцент (жёлтый), потёмки от повреждений
+    const A = shade(this.tint, -dmg*0.45);
+    const body   = A;
+    const dark   = shade(A, -0.28);
+    const light  = shade(A,  0.22);
+    const yellow = dmg>0.6 ? '#8a6a20' : '#ffd23f';
+    const visor  = dmg>0.8 ? '#552222' : '#ffec6b';
+    const gun    = '#39424f';
+    const gunLt  = '#5c6a7d';
+
+    const u = cell/16;                 // "пиксель" относительно клетки
+    const R = (x,y,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(Math.round(px+x*u), Math.round(py+y*u), Math.ceil(w*u), Math.ceil(h*u)); };
+    // зеркалим X если facing=-1
+    const X = x => f===1 ? x : (-x-1);
+
+    const tierOf = s => this.loadout[s] ? this.loadout[s].tier : 'M';
+
+    /* --- НОГИ --- */
+    const lt = tierOf('legs');
+    const legH = lt==='L'?9 : lt==='M'?10 : 8;
+    const legW = lt==='H'?4 : 3;
+    // таз
+    R(X(-4),-legH-3, 9,3, dark);
+    // левая нога (задняя)
+    R(X(-4),-legH, 3,legH, dark);
+    R(X(-4),-1, 3+ (lt==='H'?1:0),1, '#222');
+    // правая нога (передняя)
+    R(X(1),-legH, legW,legH, body);
+    R(X(1),-legH, 1,legH, light);
+    R(X(1),-1, legW+(lt==='H'?1:0),1, '#111');
+    if(lt==='H'){ R(X(0),-legH, 1,legH, yellow); } // гусеничная кромка
+
+    /* --- КОРПУС --- */
+    const bt = tierOf('body');
+    const bw = bt==='L'?8 : bt==='M'?10 : 13;
+    const bh = bt==='L'?8 : bt==='M'?9 : 11;
+    const by = -legH-bh-2;
+    R(X(-bw/2|0),by, bw,bh, body);
+    R(X(-bw/2|0),by, bw,2, light);                       // верхняя плита
+    R(X(-(bw/2|0)+1),by+bh-3, bw-2,2, dark);             // низ
+    // кабина пилота (иллюминатор) — как в FM: маленькое окно
+    R(X(-1),by+2, 3,3, '#1c2b3a');
+    R(X(-1),by+2, 3,1, '#3f6b8f');
+    R(X(0),by+3, 1,1, '#cfe9ff');                         // силуэт пилота
+    if(bt==='H'){ R(X(-bw/2|0),by, 1,bh, yellow); R(X(bw/2|0)-1,by,1,bh,yellow); }
+    if(bt==='M'){ R(X(-bw/2|0)+1,by+bh-1, bw-2,1, yellow); }
+
+    /* --- НАПЛЕЧНИКИ + РУКИ --- */
+    const drawArm=(slot, sx, sy)=>{
+      const p=this.loadout[slot]; if(!p) return;
+      const t=p.tier;
+      const pw = t==='L'?4 : t==='M'?5 : 7;
+      const ph = t==='L'?4 : t==='M'?5 : 6;
+      // наплечник
+      R(X(sx-pw/2|0), sy-ph, pw, ph, t==='H'?dark:body);
+      R(X(sx-pw/2|0), sy-ph, pw, 1, light);
+      if(t!=='L') R(X(sx-pw/2|0)+1, sy-2, pw-2,1, yellow);
+      // предплечье
+      R(X(sx-1), sy, 3, 6, dark);
+      // оружие вместо кисти
+      if(p.isArmed){
+        const gl = t==='L'?5 : t==='M'?7 : 9;
+        R(X(sx), sy+5, gl, 2, gun);
+        R(X(sx), sy+5, gl, 1, gunLt);
+        R(X(sx)+ (f===1?gl-1:0)*1, sy+5, 1,2, '#111');       // дуло
+        const left = this.ammo[slot]||0;
+        if(left===0) R(X(sx), sy+3, 2,2, '#a33');            // индикатор "пусто"
+      } else {
+        R(X(sx-1), sy+6, 3,2, gunLt);                        // кисть
+      }
+    };
+    const shoulderY = by+1;
+    drawArm('armL', -(bw/2|0)-2, shoulderY);
+    drawArm('armR',  (bw/2|0)+2, shoulderY);
+
+    /* --- ГОЛОВА --- */
+    const ht = tierOf('head');
+    const hw = ht==='L'?4 : ht==='M'?5 : 7;
+    const hh = ht==='L'?3 : ht==='M'?4 : 5;
+    const hy = by-hh-1;
+    R(X(-hw/2|0),hy, hw,hh, body);
+    R(X(-hw/2|0),hy, hw,1, light);
+    // визор
+    R(X(f===1?0:-hw/2|0+0), hy+1, Math.max(2,hw-2),1, visor);
+    if(ht==='H'){ R(X(-hw/2|0)-1,hy+hh-1, hw+2,1, dark); }   // "корона"
+    // антенна у лёгкой разведголовы
+    if(ht==='L'){ R(X(1),hy-3,1,3,'#9fb'); }
+
+    /* --- повреждения: трещины --- */
+    if(dmg>0.3){
+      ctx.fillStyle='#1a1a1a';
+      for(let i=0;i<Math.floor(dmg*8);i++){
+        const rx = px + (((i*53)%17)-8)*u, ry = py + (((i*37)%19)-legH-bh)*u;
+        ctx.fillRect(rx|0, ry|0, u|0||1, (2*u)|0||2);
+      }
+    }
+    // тень под мехом
+    ctx.fillStyle='rgba(0,0,0,.45)';
+    ctx.fillRect(Math.round(px-6*u), Math.round(py), 12*u, Math.max(2,u));
+  }
+}
+
+/* Затемнение/осветление hex-цвета на k (-1..1) */
+function shade(hex,k){
+  const n=parseInt(hex.slice(1),16);
+  let r=n>>16, g=(n>>8)&255, b=n&255;
+  const f=v=>Math.max(0,Math.min(255, Math.round(v + (k>0?(255-v)*k:v*k))));
+  r=f(r);g=f(g);b=f(b);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+
+/* ===== battle.js ===== */
+'use strict';
+/* ============================================================
+ * battle.js — класс Battle: пошаговый бой 1v1 на сетке 8x8.
+ * Действия игрока: MOVE / ATTACK / WAIT. Простой ИИ врага.
+ * Canvas рисует поле; HTML-панели (game.js) — меню и лог.
+ * ============================================================ */
+
+const GRID = 8;
+
+class Battle {
+  /**
+   * @param {Mech} player
+   * @param {Mech} enemy
+   * @param {Function} onEnd(result:'win'|'lose')
+   * @param {Object} ui ссылки на DOM-элементы боевого UI
+   */
+  constructor(player, enemy, onEnd, ui){
+    this.player = player; this.enemy = enemy;
+    this.onEnd = onEnd; this.ui = ui;
+    this.turn = 'player';           // 'player' | 'enemy'
+    this.phase = 'order';           // order | movePick | attackPick | anim | over
+    this.moveLeft = 0;
+    this.logLines = [];
+    this.fx = [];                   // эффекты: [{type:'shot'|'boom', ...}]
+    this.hoverCell = null;
+    this.cellPx = 34;               // пересчитывается в draw
+    this.originX = 0; this.originY = 0;
+
+    // Расстановка: игрок слева, враг справа
+    player.x = 1; player.y = 5; player.facing = 1;
+    enemy.x = 6;  enemy.y = 2;  enemy.facing = -1;
+
+    this.addLog(`${enemy.name} ENGAGED!`);
+    this.addLog('YOUR TURN — SELECT ORDER');
+  }
+
+  /* ---------- ВВОД (вызывается из game.js) ---------- */
+  click(cx, cy, right){
+    if (this.phase === 'movePick'){
+      if (right || (cx===this.player.x && cy===this.player.y)){
+        this.phase='order'; this.moveLeft=0; this.refreshUI(); return;
+      }
+      if (this.inMoveRange(cx,cy)){
+        const steps = this.pathCost(this.player.x,this.player.y,cx,cy);
+        if (steps <= this.moveLeft){
+          this.player.x=cx; this.player.y=cy;
+          this.moveLeft -= steps;
+          this.addLog(`MOVED (${cx},${cy}) LEFT:${this.moveLeft}`);
+          // остаёмся в movePick для нескольких шагов? Нет: 1 приказ = 1 движение
+          this.phase='order'; this.refreshUI();
+        }
+      } else {
+        this.addLog('CELL NOT IN RANGE');
+      }
+      return;
+    }
+    if (this.phase === 'attackPick'){
+      if (right){ this.phase='order'; this.refreshUI(); return; }
+      if (cx===this.enemy.x && cy===this.enemy.y){
+        this.doPlayerAttack();
+      }
+      return;
+    }
+  }
+
+  chooseOrder(act){
+    if (this.turn!=='player' || this.phase!=='order') return;
+    if (act==='move'){
+      this.moveLeft = this.player.stats.move;
+      if (this.moveLeft<=0){ this.addLog('NO MOVE LEFT'); return; }
+      this.phase='movePick';
+      this.addLog(`PICK CELL (MAX ${this.moveLeft})`);
+    } else if (act==='attack'){
+      const d = this.dist(this.player,this.enemy);
+      const ok = this.player.weaponsInRange(d);
+      if (!ok.length){ this.addLog('TARGET OUT OF RANGE / NO AMMO'); return; }
+      this.phase='attackPick';
+      this.addLog('CONFIRM TARGET');
+    } else if (act==='wait'){
+      this.endPlayerTurn();
+    }
+    this.refreshUI();
+  }
+
+  /* ---------- ХОД АТАКИ ИГРОКА ---------- */
+  doPlayerAttack(){
+    const d = this.dist(this.player,this.enemy);
+    const slots = this.player.weaponsInRange(d);
+    // залп: стреляет каждое доступное оружие (как в FM — по очереди)
+    for (const s of slots){
+      const wpn=this.player.loadout[s].weapon;
+      const hitChance = Math.max(10, Math.min(95, this.player.stats.acc + (3-d)*4 - this.enemy.stats.eva));
+      const hit = Math.random()*100 < hitChance;
+      this.player.ammo[s]--;
+      this.spawnFx('shot', this.player, this.enemy);
+      if (hit){
+        // выбор случайной живой детали цели
+        const parts=SLOTS.filter(x=>this.enemy.partHP[x]>0);
+        const targetSlot = parts[Math.floor(Math.random()*parts.length)];
+        const tdf = this.enemy.loadout[targetSlot].df;
+        const dmg = Math.max(1, Math.round(wpn.at - tdf/2));
+        this.enemy.partHP[targetSlot] -= dmg;
+        this.spawnFx('boom', this.enemy, null);
+        this.addLog(`${s.toUpperCase()} HIT ${targetSlot.toUpperCase()} -${dmg}`);
+      } else {
+        this.addLog(`${s.toUpperCase()} MISS`);
+      }
+    }
+    if (this.enemy.hpNow<=0) return this.finish('win');
+    this.endPlayerTurn();
+  }
+
+  endPlayerTurn(){
+    this.phase='anim';
+    setTimeout(()=>{ this.enemyTurn(); }, 500);
+  }
+
+  /* ---------- ИИ ВРАГА (очень простой) ---------- */
+  enemyTurn(){
+    this.turn='enemy';
+    this.addLog(`${this.enemy.name} TURN...`);
+    this.refreshUI();
+    setTimeout(()=>{
+      const d = this.dist(this.player,this.enemy);
+      const ok = this.enemy.weaponsInRange(d);
+      if (ok.length && Math.random()<0.8){
+        // атака
+        for (const s of ok){
+          const wpn=this.enemy.loadout[s].weapon;
+          const chance=Math.max(10,Math.min(90,this.enemy.stats.acc+(3-d)*3-this.player.stats.eva));
+          this.enemy.ammo[s]--;
+          this.spawnFx('shot', this.enemy, this.player);
+          if (Math.random()*100<chance){
+            const parts=SLOTS.filter(x=>this.player.partHP[x]>0);
+            const ts=parts[Math.floor(Math.random()*parts.length)];
+            const dmg=Math.max(1,Math.round(wpn.at - this.player.loadout[ts].df/2));
+            this.player.partHP[ts]-=dmg;
+            this.spawnFx('boom', this.player,null);
+            this.addLog(`E.${s.toUpperCase()} HIT ${ts.toUpperCase()} -${dmg}`);
+          } else this.addLog(`E.${s.toUpperCase()} MISS`);
+        }
+        if (this.player.hpNow<=0) return this.finish('lose');
+      } else {
+        // сблизиться к клетке рядом с игроком (жадно, без поиска пути)
+        const mv=this.enemy.stats.move; let moved=0;
+        while(moved<mv){
+          const dx=Math.sign(this.player.x-this.enemy.x);
+          const dy=Math.sign(this.player.y-this.enemy.y);
+          if(dx===0&&dy===0) break;
+          let nx=this.enemy.x+dx, ny=this.enemy.y+dy;
+          if(nx===this.player.x&&ny===this.player.y){ if(dy!==0){nx=this.enemy.x;}else{break;} }
+          this.enemy.x=nx; this.enemy.y=ny; moved++;
+          if(this.dist(this.player,this.enemy)<=Math.max(2,this.enemy.baseStats.maxRange-1)) break;
+        }
+        if(moved) this.addLog(`${this.enemy.name} ADVANCED`);
+      }
+      this.turn='player'; this.phase='order';
+      this.addLog('YOUR TURN');
+      this.refreshUI();
+    }, 700);
+  }
+
+  finish(result){
+    this.phase='over';
+    this.addLog(result==='win'?'ENEMY DESTROYED!':'MECH DISABLED...');
+    this.refreshUI();
+    setTimeout(()=>this.onEnd(result), 900);
+  }
+
+  /* ---------- УТИЛИТИ ---------- */
+  dist(a,b){ return Math.max(Math.abs(a.x-b.x), Math.abs(a.y-b.y)); } // chessboard
+  inMoveRange(cx,cy){
+    if (cx===this.player.x&&cy===this.player.y) return false;
+    if (cx===this.enemy.x&&cy===this.enemy.y) return false;
+    return this.pathCost(this.player.x,this.player.y,cx,cy)<=this.moveLeft;
+  }
+  pathCost(x0,y0,x1,y1){ return Math.max(Math.abs(x1-x0),Math.abs(y1-y0)); }
+
+  addLog(t){ this.logLines.unshift(t); if(this.logLines.length>5)this.logLines.pop(); }
+
+  spawnFx(type, from, to){
+    if(type==='shot'&&to){
+      this.fx.push({type,x1:this.cellCX(from),y1:this.cellCY(from)-20,
+                    x2:this.cellCX(to),y2:this.cellCY(to)-20,t:0});
+    } else if(type==='boom'){
+      this.fx.push({type,x:this.cellCX(from),y:this.cellCY(from)-22,t:0});
+    }
+  }
+  cellCX(m){ return this.originX+m.x*this.cellPx+this.cellPx/2; }
+  cellCY(m){ return this.originY+m.y*this.cellPx+this.cellPx/2; }
+
+  refreshUI(){
+    const u=this.ui;
+    if(!u) return;
+    u.turnBanner.textContent = this.turn==='player'?'PLAYER TURN':`${this.enemy.name}`;
+    u.turnBanner.classList.toggle('enemy', this.turn!=='player');
+    u.actionMenu.hidden = !(this.turn==='player'&&this.phase==='order');
+    u.targetHint.hidden = !(this.phase==='movePick'||this.phase==='attackPick');
+    u.battleLog.innerHTML = this.logLines.map(l=>`<div>▸ ${l}</div>`).join('');
+    const e=this.enemy, p=this.player;
+    u.enemyInfo.innerHTML =
+      `<b>${e.name}</b><br>HP ${e.hpNow}/${e.baseStats.hpMax}<br>`+
+      `AT ${e.stats.at} · DF ${e.stats.df}<br>MOVE ${e.stats.move} · RNG ${e.baseStats.maxRange}<br>`+
+      `<span style="color:#8fa">YOU: HP ${p.hpNow}/${p.baseStats.hpMax} · MV ${this.moveLeft||p.stats.move}</span>`;
+  }
+
+  /* ---------- ОТРИСОВКА ПОЛЯ ---------- */
+  draw(ctx, W, H){
+    // фон поля — индустриальный пол ангара
+    ctx.fillStyle='#141a22'; ctx.fillRect(0,0,W,H);
+
+    // адаптивная клетка
+    this.cellPx = Math.floor(Math.min((W-40)/GRID,(H-70)/GRID));
+    this.originX = Math.floor((W-this.cellPx*GRID)/2);
+    this.originY = Math.floor((H-this.cellPx*GRID)/2)+10;
+
+    // жёлто-чёрные предупреждающие полосы сверху/снизу поля
+    for(let i=-1;i<GRID+2;i++){
+      ctx.fillStyle = i%2? '#c9a227':'#161616';
+      ctx.fillRect(this.originX+i*this.cellPx, this.originY-8, this.cellPx, 8);
+      ctx.fillRect(this.originX+i*this.cellPx, this.originY+GRID*this.cellPx, this.cellPx, 8);
+    }
+
+    // клетки
+    for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+      const px=this.originX+x*this.cellPx, py=this.originY+y*this.cellPx;
+      ctx.fillStyle=(x+y)%2?'#1b2430':'#171f29';
+      ctx.fillRect(px,py,this.cellPx,this.cellPx);
+      ctx.strokeStyle='#26313f'; ctx.lineWidth=1;
+      ctx.strokeRect(px+.5,py+.5,this.cellPx-1,this.cellPx-1);
+    }
+
+    // подсветка диапазона движения
+    if(this.phase==='movePick'){
+      for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+        if(this.inMoveRange(x,y)){
+          ctx.fillStyle='rgba(90,160,255,.28)';
+          ctx.fillRect(this.originX+x*this.cellPx+1,this.originY+y*this.cellPx+1,this.cellPx-2,this.cellPx-2);
+        }
+      }
+    }
+    // подсветка дальности атаки
+    if(this.phase==='attackPick'){
+      const d=this.dist(this.player,this.enemy);
+      ctx.fillStyle = this.player.weaponsInRange(d).length ? 'rgba(255,80,60,.25)' : 'rgba(120,120,120,.2)';
+      ctx.fillRect(this.originX+this.enemy.x*this.cellPx+1,this.originY+this.enemy.y*this.cellPx+1,this.cellPx-2,this.cellPx-2);
+    }
+    // курсор
+    if(this.hoverCell){
+      ctx.strokeStyle='#ffd23f'; ctx.lineWidth=2;
+      ctx.strokeRect(this.originX+this.hoverCell.x*this.cellPx+1.5,this.originY+this.hoverCell.y*this.cellPx+1.5,this.cellPx-3,this.cellPx-3);
+    }
+
+    // мехи (сортировка по y для порядка отрисовки)
+    const ms=[this.enemy,this.player].sort((a,b)=>a.y-b.y);
+    for(const m of ms) m.draw(ctx, this.cellCX(m), this.originY+m.y*this.cellPx+this.cellPx-3, this.cellPx);
+
+    // HP-бары над мехами
+    this.bar(ctx,this.cellCX(this.player), this.originY+this.player.y*this.cellPx-this.cellPx*0.9, this.player,'#5ad06a');
+    this.bar(ctx,this.cellCX(this.enemy),  this.originY+this.enemy.y*this.cellPx-this.cellPx*0.9, this.enemy,'#ff6b5e');
+
+    // эффекты
+    this.fx=this.fx.filter(fx=>{
+      fx.t+=1/60;
+      if(fx.type==='shot'){
+        const k=Math.min(1,fx.t/0.25);
+        ctx.strokeStyle='#ffe97a'; ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(fx.x1,fx.y1);
+        ctx.lineTo(fx.x1+(fx.x2-fx.x1)*k, fx.y1+(fx.y2-fx.y1)*k);
+        ctx.stroke();
+        return fx.t<0.3;
+      }
+      if(fx.type==='boom'){
+        const r=fx.t*40;
+        ctx.fillStyle=`rgba(255,140,40,${Math.max(0,1-fx.t*3)})`;
+        ctx.fillRect(fx.x-r/2,fx.y-r/2,r,r);
+        ctx.fillStyle=`rgba(255,255,120,${Math.max(0,1-fx.t*4)})`;
+        ctx.fillRect(fx.x-r/4,fx.y-r/4,r/2,r/2);
+        return fx.t<0.35;
+      }
+      return false;
+    });
+  }
+  bar(ctx,x,y,m,color){
+    const w=this.cellPx*1.2, h=4;
+    const ratio=Math.max(0,m.hpNow/m.baseStats.hpMax);
+    ctx.fillStyle='#000'; ctx.fillRect(x-w/2-1,y-1,w+2,h+2);
+    ctx.fillStyle='#3a1010'; ctx.fillRect(x-w/2,y,w,h);
+    ctx.fillStyle=color; ctx.fillRect(x-w/2,y,w*ratio,h);
+  }
+}
+
+
+/* ===== game.js ===== */
+'use strict';
+/* ============================================================
+ * game.js — класс Game + GameState: экраны HANGAR / BATTLE,
+ * фоновая отрисовка ангара на canvas, HTML-панели кастомизации,
+ * прогрессия (кредиты, разблокировки тяжёлого комплекта).
+ * ============================================================ */
+
+const W = 640, H = 360;   // внутреннее разрешение холста
+
+class GameState {
+  constructor(){
+    this.screen = 'hangar';           // hangar | battle | result
+    this.credits = 0;
+    this.wins = 0;                    // число побед -> индекс награды
+    this.unlocked = new Set(PART_DB.filter(p=>p.unlocked).map(p=>p.id));
+    this.loadout = {                  // стартовая сборка игрока
+      head:'head-M', armR:'armR-M', armL:'armL-L', body:'body-M', legs:'legs-M',
+    };
+    this.selectedSlot = null;         // выбранный слот в SELECT PARTS
+    this.hoverPart = null;            // деталь под курсором для карточки
+  }
+}
+
+class Game {
+  constructor(){
+    this.state = new GameState();
+    this.canvas = document.getElementById('screen');
+    this.ctx = this.canvas.getContext('2d');
+    this.ctx.imageSmoothingEnabled = false;   // pixel-perfect!
+
+    // ссылки на DOM
+    this.dom = {
+      hangarUI: document.getElementById('hangarUI'),
+      battleUI: document.getElementById('battleUI'),
+      resultUI: document.getElementById('resultUI'),
+      slotList: document.getElementById('slotList'),
+      statusTable: document.getElementById('statusTable'),
+      partDetail: document.getElementById('partDetail'),
+      btnBattle: document.getElementById('btnBattle'),
+      actionMenu: document.getElementById('actionMenu'),
+      turnBanner: document.getElementById('turnBanner'),
+      enemyInfo: document.getElementById('enemyInfo'),
+      battleLog: document.getElementById('battleLog'),
+      targetHint: document.getElementById('targetHint'),
+      resultTitle: document.getElementById('resultTitle'),
+      resultReward: document.getElementById('resultReward'),
+    };
+
+    this.playerMech = this.buildPlayerMech();
+    this.battle = null;
+    this.time = 0;
+
+    this.bindEvents();
+    this.renderHangarUI();
+    requestAnimationFrame(t=>this.loop(t));
+  }
+
+  /* ---------- СБОРКА МЕХА ИГРОКА ИЗ LOADOUT ---------- */
+  buildPlayerMech(){
+    return new Mech({
+      loadout: Object.values(this.state.loadout),
+      tint:'#cfd8e3', name:'PLAYER MECH', facing:1,
+    });
+  }
+
+  /* ---------- СОБЫТИЯ ---------- */
+  bindEvents(){
+    this.dom.btnBattle.addEventListener('click', ()=>this.startBattle());
+    document.getElementById('btnResultOk').addEventListener('click', ()=>this.toHangar());
+    document.getElementById('btnPilot').addEventListener('click', ()=>{
+      this.logToast('PILOT ROOM: TODO IN NEXT BUILD');
+    });
+
+    this.dom.actionMenu.querySelectorAll('.act-btn').forEach(b=>{
+      b.addEventListener('click', ()=>this.battle && this.battle.chooseOrder(b.dataset.act));
+    });
+
+    // ввод по canvas: перевод экранных координат во внутренние 640x360
+    const toCanvas = e=>{
+      const r=this.canvas.getBoundingClientRect();
+      // offsetX/offsetY — координаты внутри элемента; + запасной пересчёт через rect
+      let ox = (e.offsetX!=null && e.target===this.canvas) ? e.offsetX : null;
+      let oy = (e.offsetY!=null && e.target===this.canvas) ? e.offsetY : null;
+      if(ox==null){ ox=e.clientX-r.left; oy=e.clientY-r.top; }
+      return { x:ox*W/r.width, y:oy*H/r.height };
+    };
+    this.canvas.addEventListener('mousemove', e=>{
+      if(this.battle){
+        const p=toCanvas(e);
+        const cx=Math.floor((p.x-this.battle.originX)/this.battle.cellPx);
+        const cy=Math.floor((p.y-this.battle.originY)/this.battle.cellPx);
+        this.battle.hoverCell = (cx>=0&&cx<GRID&&cy>=0&&cy<GRID)?{x:cx,y:cy}:null;
+      }
+    });
+    this.canvas.addEventListener('contextmenu', e=>{
+      e.preventDefault();
+      if(this.battle){ const hc=this.battle.hoverCell; if(hc) this.battle.click(hc.x,hc.y,true); }
+    });
+    this.canvas.addEventListener('click', e=>{
+      if(this.state.screen==='battle'&&this.battle){
+        const p=toCanvas(e);
+        const cx=Math.floor((p.x-this.battle.originX)/this.battle.cellPx);
+        const cy=Math.floor((p.y-this.battle.originY)/this.battle.cellPx);
+        if(cx>=0&&cx<GRID&&cy>=0&&cy<GRID) this.battle.click(cx,cy,false);
+      } else if(this.state.screen==='hangar'){
+        // клик по меху в ангаре = выбрать соответствующий слот (по зоне)
+        this.pickSlotByHangarClick(toCanvas(e));
+      }
+    });
+    window.addEventListener('keydown', e=>{
+      if(e.key==='Escape'){
+        if(this.battle&&(this.battle.phase==='movePick'||this.battle.phase==='attackPick')){
+          this.battle.phase='order'; this.battle.refreshUI();
+        } else this.dom.partDetail.hidden=true, this.state.selectedSlot=null, this.renderHangarUI();
+      }
+      if(this.state.screen==='battle'&&this.battle&&this.battle.phase==='order'){
+        if(e.key==='1') this.battle.chooseOrder('move');
+        if(e.key==='2') this.battle.chooseOrder('attack');
+        if(e.key==='3') this.battle.chooseOrder('wait');
+      }
+    });
+  }
+
+  // зоны клика по меху в ангаре (в координатах 640x360)
+  pickSlotByHangarClick(p){
+    const zones=[
+      {s:'head', x:300,y:126,w:40,h:22},
+      {s:'armR', x:346,y:150,w:26,h:52},
+      {s:'armL', x:268,y:150,w:26,h:52},
+      {s:'body', x:296,y:148,w:48,h:46},
+      {s:'legs', x:292,y:196,w:56,h:60},
+    ];
+    for(const z of zones){
+      if(p.x>=z.x&&p.x<=z.x+z.w&&p.y>=z.y&&p.y<=z.y+z.h){
+        this.state.selectedSlot=z.s; this.renderHangarUI(); return;
+      }
+    }
+  }
+
+  /* ---------- ЭКРАН БОЯ ---------- */
+  startBattle(){
+    const preset = ENEMY_PRESETS[Math.min(this.state.wins, ENEMY_PRESETS.length-1)];
+    const enemy = new Mech({ loadout:preset.loadout, tint:preset.tint, name:preset.label.split('"')[1]||'HOSTILE', facing:-1 });
+    // перед боем чиним/пересобираем меха из текущего loadout
+    this.playerMech = this.buildPlayerMech();
+    this.battle = new Battle(this.playerMech, enemy, res=>this.endBattle(res), {
+      turnBanner:this.dom.turnBanner, actionMenu:this.dom.actionMenu,
+      enemyInfo:this.dom.enemyInfo, battleLog:this.dom.battleLog, targetHint:this.dom.targetHint,
+    });
+    this.battle.refreshUI();
+    this.state.screen='battle';
+    this.dom.hangarUI.hidden=true; this.dom.battleUI.hidden=false; this.dom.resultUI.hidden=true;
+  }
+
+  endBattle(result){
+    this.state.screen='result';
+    this.dom.battleUI.hidden=true; this.dom.resultUI.hidden=false;
+    const win = result==='win';
+    this.dom.resultTitle.textContent = win?'MISSION COMPLETE':'MECH DESTROYED';
+    this.dom.resultTitle.className = 'result-title'+(win?'':' lose');
+    let txt='';
+    if(win){
+      const rw = REWARDS[Math.min(this.state.wins, REWARDS.length-1)];
+      this.state.credits += rw.credits;
+      rw.unlock.forEach(id=>this.state.unlocked.add(id));
+      this.state.wins++;
+      txt = `+${rw.credits} CR<br>UNLOCKED: ${rw.unlock.map(id=>partById(id).name).join(', ')||'—'}`;
+    } else txt='REPAIRS FREE IN TRAINING.<br>TRY ANOTHER LOADOUT.';
+    this.dom.resultReward.innerHTML = txt;
+  }
+
+  toHangar(){
+    this.state.screen='hangar';
+    this.battle=null;
+    this.dom.resultUI.hidden=true; this.dom.hangarUI.hidden=false;
+    this.renderHangarUI();
+  }
+
+  logToast(msg){ this.state.toast=msg; this.state.toastT=this.time; }
+
+  /* ---------- HTML ПАНЕЛИ АНГАРА ---------- */
+  renderHangarUI(){
+    const st=this.state;
+    // SELECT PARTS: строкa слота + 3 кнопки деталей
+    this.dom.slotList.innerHTML = SLOTS.map(slot=>{
+      const cur=st.loadout[slot];
+      const parts=PART_DB.filter(p=>p.slot===slot);
+      return `<div class="slot-row">
+        <div class="slot-name ${st.selectedSlot===slot?'active':''}" data-slot="${slot}">
+          ${SLOT_NAMES[slot]}<br><span style="color:#7fd0ff">${partById(cur).name}</span>
+        </div>
+        <div class="slot-parts">${parts.map(p=>{
+          const unl=st.unlocked.has(p.id);
+          return `<button class="pbtn ${cur===p.id?'eq':''} ${unl?'':'locked'}"
+            data-part="${p.id}" ${unl?'':'disabled'} title="${TIERS[p.tier].name}">
+            ${p.tier}<br>${unl?p.weapon?`${p.weapon.at}AT`:`DF${p.df}`:'???'}</button>`;
+        }).join('')}</div>
+      </div>`;
+    }).join('');
+
+    // делегирование кликов панелей
+    this.dom.slotList.onclick = e=>{
+      const pb=e.target.closest('[data-part]');
+      const sb=e.target.closest('[data-slot]');
+      if(pb && !pb.disabled){
+        st.loadout[partById(pb.dataset.part).slot]=pb.dataset.part;
+        this.playerMech=this.buildPlayerMech();
+        this.renderHangarUI(); this.showPartDetail(partById(pb.dataset.part));
+      } else if(sb){
+        st.selectedSlot = st.selectedSlot===sb.dataset.slot?null:sb.dataset.slot;
+        this.renderHangarUI();
+        if(st.selectedSlot){
+          const first=PART_DB.find(p=>p.slot===st.selectedSlot&&st.unlocked.has(p.id));
+          if(first) this.showPartDetail(first);
+        } else this.dom.partDetail.hidden=true;
+      }
+    };
+
+    // STATUS
+    const m=this.playerMech, s=m.stats, b=m.baseStats;
+    const over = b.weight>b.maxLoad;
+    this.dom.statusTable.innerHTML = [
+      ['HP', `${m.hpNow}/${s.hpMax}`],
+      ['AT', s.at], ['DF', s.df],
+      ['WEIGHT', `${b.weight}/${b.maxLoad} kg`, over],
+      ['SPEED', s.move], ['ACC', s.acc+'%'], ['EVA', s.eva+'%'],
+      ['AMMO', Object.entries(m.ammo).map(([k,v])=>`${k.slice(-1)}:${v}`).join(' ')],
+      ['RANGE', s.range],
+      ['CREDITS', st.credits+' CR'],
+    ].map(([k,v,warn])=>`<div class="st-line"><span>${k}</span><b class="${warn?'warn':''}">${v}</b></div>`).join('')
+     + `<div class="st-line"><span>TYPE</span><b>1v1 TACTICAL</b></div>`;
+  }
+
+  showPartDetail(p){
+    const d=this.dom.partDetail;
+    d.hidden=false;
+    d.innerHTML=`<div class="panel-title pd-tier-${p.tier}">${p.name}</div>
+      <div class="pd-name">${SLOT_NAMES[p.slot]} · ${TIERS[p.tier].name}</div>
+      WEIGHT ${p.w} kg<br>HP ${p.hp} · DF ${p.df}<br>
+      ${p.isArmed?`AT ${p.weapon.at} · AMMO ${p.weapon.ammo}<br>RANGE ${p.weapon.rng} · TYPE GUN<br>`:''}
+      ${p.maxLoad?`MAX LOAD ${p.maxLoad} kg<br>`:''}
+      ${p.acc?`ACC ${p.acc>0?'+':''}${p.acc}% `:''}${p.eva?`EVA ${p.eva>0?'+':''}${p.eva}%`:''}
+      ${p.move?`<br>MOVE +${p.move}`:''}`;
+  }
+
+  /* ---------- ГЛАВНЫЙ ЦИКЛ ---------- */
+  loop(t){
+    this.time=t/1000;
+    const c=this.ctx;
+    c.imageSmoothingEnabled=false;
+    if(this.state.screen==='battle'&&this.battle){
+      this.battle.draw(c,W,H);
+    } else {
+      this.drawHangar(c);
+    }
+    requestAnimationFrame(tt=>this.loop(tt));
+  }
+
+  /* ---------- ФОН АНГАРА (canvas, пиксельный) ---------- */
+  drawHangar(c){
+    // стены
+    c.fillStyle='#232b36'; c.fillRect(0,0,W,250);
+    // панели стен
+    for(let i=0;i<8;i++){
+      c.fillStyle=i%2?'#28313e':'#222a35';
+      c.fillRect(i*80,40,78,150);
+      c.fillStyle='#1a212b'; c.fillRect(i*80,40,78,4);
+    }
+    // фермы потолка
+    c.fillStyle='#161c24'; c.fillRect(0,0,W,40);
+    for(let x=0;x<W;x+=40){ c.fillRect(x,36,4,10); }
+    c.fillStyle='#ffd23f'; c.fillRect(0,38,W,2);
+    // прожекторы
+    for(const lx of [160,320,480]){
+      c.fillStyle='#111'; c.fillRect(lx-8,24,16,10);
+      c.fillStyle='rgba(255,240,180,.06)';
+      c.beginPath(); c.moveTo(lx-6,34); c.lineTo(lx+6,34); c.lineTo(lx+70,250); c.lineTo(lx-70,250); c.fill();
+    }
+    // кабели вдоль стены
+    c.strokeStyle='#0d1117'; c.lineWidth=3;
+    for(const off of [8,14]){
+      c.beginPath(); c.moveTo(0,58+off);
+      for(let x=0;x<=W;x+=32) c.lineTo(x,58+off+Math.sin(x*0.05+off)*4);
+      c.stroke();
+    }
+    // пол
+    c.fillStyle='#31394a'; c.fillRect(0,250,W,110);
+    for(let x=0;x<W;x+=32){ c.fillStyle=(x/32)%2?'#2b3242':'#343d4f'; c.fillRect(x,250,32,110); }
+    // жёлто-чёрные предупреждающие полосы на полу
+    for(let x=-20;x<W;x+=24){
+      c.fillStyle='#c9a227'; c.fillRect(x,252,12,8);
+      c.fillStyle='#161616'; c.fillRect(x+12,252,12,8);
+    }
+    // платформа-круг под мехом
+    c.fillStyle='#252d3b'; c.fillRect(240,258,160,10);
+    c.fillStyle='#1c2330'; c.fillRect(250,268,140,6);
+
+    // большая белая бочка "13"
+    c.fillStyle='#e8e8e0'; c.fillRect(540,190,52,62);
+    c.fillStyle='#c9c9bf'; c.fillRect(540,190,52,6); c.fillRect(540,214,52,5); c.fillRect(540,238,52,5);
+    c.fillStyle='#b53'; c.fillRect(546,200,40,3);
+    c.fillStyle='#222'; c.font='bold 20px monospace'; c.fillText('13',552,226);
+
+    // ящики слева
+    const crate=(x,y,s)=>{
+      c.fillStyle='#7a6a3f'; c.fillRect(x,y,s,s);
+      c.fillStyle='#5d5130'; c.fillRect(x,y,s,3); c.fillRect(x,y+s-3,s,3);
+      c.strokeStyle='#463d24'; c.strokeRect(x+2.5,y+2.5,s-5,s-5);
+      c.beginPath(); c.moveTo(x+2,y+2); c.lineTo(x+s-2,y+s-2); c.stroke();
+    };
+    crate(30,214,38); crate(72,222,30); crate(38,180,34);
+    // стопка шин/колец
+    c.fillStyle='#1c1c1c'; c.fillRect(120,232,34,8); c.fillRect(124,224,26,8);
+
+    // мех игрока по центру (тот же спрайт, что в бою)
+    this.playerMech.facing=1;
+    this.playerMech.draw(c, 320, 258, 46);
+
+    // подсветка выбранного слота на мехе
+    const zs={head:[320,120],armR:[352,170],armL:[288,170],body:[320,160],legs:[320,230]};
+    if(this.state.selectedSlot&&zs[this.state.selectedSlot]){
+      const [zx,zy]=zs[this.state.selectedSlot];
+      c.strokeStyle=`rgba(255,210,63,${0.5+0.5*Math.sin(this.time*6)})`;
+      c.lineWidth=2; c.strokeRect(zx-24,zy-24,48,48);
+    }
+
+    // вывеска
+    c.fillStyle='#0d1117'; c.fillRect(200,6,240,26);
+    c.strokeStyle='#4a5c78'; c.strokeRect(201,7,238,24);
+    c.fillStyle='#7fd0ff'; c.font='bold 14px monospace';
+    c.fillText('HANGAR 07 · FM-STYLE',214,24);
+
+    // тост-сообщение
+    if(this.state.toast && this.time-this.state.toastT<2.5){
+      c.fillStyle='rgba(0,0,0,.7)'; c.fillRect(W/2-130,330,260,20);
+      c.fillStyle='#ffd23f'; c.font='11px monospace';
+      c.fillText(this.state.toast, W/2-c.measureText(this.state.toast).width/2, 344);
+    }
+  }
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{ window.game = new Game(); });
+
+</script>
+</body>
+</html>

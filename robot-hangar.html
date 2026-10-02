@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ангар — Мех с пилотом 2D</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<style>
+/* style.css — оформление ангара */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: #10151f;
+  color: #e8edf5;
+  min-height: 100vh;
+}
+
+.app { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.topbar h1 { font-size: 22px; letter-spacing: 0.5px; }
+
+.total-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.tstat {
+  background: #1b2433; border: 1px solid #2e3d55; border-radius: 8px;
+  padding: 6px 10px; font-size: 13px;
+}
+.tstat b { color: #7de3ff; }
+
+.content { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .content { grid-template-columns: 1fr; } }
+
+/* скрытые секции: атрибут hidden должен работать поверх display из классов */
+[hidden] { display: none !important; }
+
+/* ---------- Ангар ---------- */
+.hangar-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+.hangar {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 520px;
+  background:
+    /* стены ангара */
+    linear-gradient(#243044, #1a2331);
+  border: 1px solid #33455f;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5);
+}
+
+/* пол */
+.hangar::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+  background:
+    repeating-linear-gradient(90deg, #2b3648 0 40px, #26303f 40px 80px);
+  border-top: 3px solid #46586f;
+}
+/* разметка на полу */
+.hangar::before {
+  content: "";
+  position: absolute; left: 15%; right: 15%; bottom: 60px; height: 6px;
+  background: repeating-linear-gradient(90deg, #ffd23f 0 24px, transparent 24px 48px);
+  opacity: 0.6; z-index: 1;
+}
+
+#robotSvg { position: relative; z-index: 2; display: block; }
+
+.robot-part { cursor: pointer; transition: filter 0.15s; }
+.robot-part:hover { filter: brightness(1.25) url(#shadow); }
+.robot-part.selected { animation: pulse 1.2s infinite; }
+@keyframes pulse {
+  0%, 100% { filter: drop-shadow(0 0 2px #ffffff); }
+  50%      { filter: drop-shadow(0 0 10px #7de3ff); }
+}
+
+.hangar-floor-label {
+  position: absolute; top: 10px; left: 12px; z-index: 3;
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa3bf; background: rgba(16,21,31,0.6);
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #33455f;
+}
+
+.hint { font-size: 13px; color: #93a5c1; }
+
+/* ---------- Панель ---------- */
+.panel { display: flex; flex-direction: column; gap: 14px; }
+
+.slots { display: flex; flex-direction: column; gap: 8px; }
+.slots-header {
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa3bf; margin-top: 6px; padding-bottom: 2px; border-bottom: 1px solid #2e3d55;
+}
+.slot-btn {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas:
+    "name tier"
+    "part part";
+  gap: 2px 8px;
+  text-align: left;
+  background: #1b2433;
+  border: 1px solid #2e3d55;
+  border-left: 5px solid var(--tier-color, #4dd2ff);
+  color: #e8edf5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.slot-btn:hover { background: #223047; }
+.slot-btn.active { outline: 2px solid #7de3ff; background: #223047; transform: translateX(3px); }
+.slot-btn.empty { opacity: 0.55; border-left-style: dashed; }
+.slot-name { grid-area: name; font-weight: 600; }
+.slot-tier { grid-area: tier; font-size: 12px; color: var(--tier-color); white-space: nowrap; }
+.slot-part { grid-area: part; font-size: 12px; color: #93a5c1; }
+
+.picker {
+  background: #161e2b; border: 1px solid #2e3d55; border-radius: 12px; padding: 12px;
+}
+.picker-title { font-weight: 600; margin-bottom: 10px; color: #cfe0f5; }
+.picker-cards { display: flex; flex-direction: column; gap: 10px; }
+
+.part-card {
+  text-align: left;
+  background: #1b2433;
+  border: 1px solid #2e3d55;
+  border-top: 4px solid var(--tier-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #e8edf5;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.part-card:hover { background: #223047; transform: translateY(-2px); }
+.part-card.current { outline: 2px solid var(--tier-color); }
+.part-card.remove { border-top-color: #ff5c5c; text-align: center; color: #ffb1b1; }
+.part-card.remove:hover { background: #3a2028; }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.badge {
+  font-size: 12px; font-weight: 700; color: var(--tier-color);
+  border: 1px solid var(--tier-color); border-radius: 20px; padding: 2px 10px;
+}
+.installed { font-size: 12px; color: #6fdc8c; font-weight: 600; }
+.card-label { font-weight: 600; margin-bottom: 6px; }
+
+.card-stats { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 13px; color: #aebfd8; }
+.card-stats li:nth-child(5) { grid-column: span 2; }
+.card-stats b { color: #fff; }
+
+/* ---------- Подсказка «кабина пилота» ---------- */
+.cockpit-tip {
+  position: absolute; top: 12px; right: 12px; z-index: 4;
+  width: 190px; padding: 8px 8px 6px;
+  background: rgba(13, 20, 32, 0.92);
+  border: 1px solid #3d5a80; border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(-6px); pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.cockpit-tip.visible { opacity: 1; transform: translateY(0); }
+.cockpit-tip svg { display: block; border-radius: 6px; }
+.tip-caption { font-size: 11.5px; color: #bcd4ee; text-align: center; margin-top: 6px; }
+
+/* ============================================================
+   КОМНАТА ПИЛОТА: экран, рабочий стол, папки, карточка дела
+   ============================================================ */
+.pilot-room { display: flex; flex-direction: column; gap: 10px; }
+
+.room-scene {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #33455f;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5);
+  background: linear-gradient(#2a3143, #1c2230);
+}
+.room-scene svg { display: block; }
+
+/* кликабельные папки на столе */
+.folder { cursor: pointer; transition: transform 0.18s ease, filter 0.18s ease; transform-box: fill-box; transform-origin: center; }
+.folder:hover { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 210, 63, 0.55)); transform: translateY(-10px) scale(1.03); }
+.folder:active { transform: translateY(-4px) scale(0.99); }
+
+/* ---------- Карточка личного дела (поверх сцены) ---------- */
+.dossier {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 12, 20, 0.78);
+  backdrop-filter: blur(3px);
+}
+.dossier-card-anim { animation: dossierPop 0.22s ease; }
+@keyframes dossierPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.dossier[hidden] { display: none; }
+
+.dossier-inner {
+  display: flex; gap: 20px; align-items: flex-start;
+  max-width: 720px; width: calc(100% - 40px);
+  background: #1b2433;
+  border: 1px solid #3d5a80;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  position: relative;
+  animation: dossierPop 0.22s ease;
+}
+.dossier-close {
+  position: absolute; top: 10px; right: 12px;
+  background: #2e3d55; color: #cfe0f5;
+  border: 1px solid #46586f; border-radius: 8px;
+  font-size: 15px; padding: 4px 10px; cursor: pointer;
+}
+.dossier-close:hover { background: #c0392b; color: #fff; }
+
+.dossier-photo { flex: 0 0 190px; }
+.dossier-photo svg { width: 190px; height: auto; display: block; border-radius: 10px; border: 2px solid #3d5a80; }
+
+.dossier-info { flex: 1; min-width: 0; }
+.dossier-info h2 { font-size: 19px; color: #ffd23f; margin-bottom: 4px; padding-right: 30px; }
+.dossier-rank { font-size: 13px; color: #7de3ff; margin-bottom: 12px; }
+.dossier-list { list-style: none; display: grid; gap: 5px; font-size: 13.5px; color: #9fb2cf; }
+.dossier-list b { color: #eef4fc; font-weight: 600; }
+.dossier-mech {
+  margin-top: 14px; padding: 9px 12px;
+  background: #14202f; border: 1px dashed #3d5a80; border-radius: 9px;
+  font-size: 13px; color: #bcd4ee;
+}
+
+/* ---------- Кнопки навигации в шапке ---------- */
+.nav-btns { display: flex; gap: 8px; }
+.nav-btn {
+  background: #1b2433; color: #cfe0f5;
+  border: 1px solid #2e3d55; border-radius: 9px;
+  padding: 8px 14px; font-size: 14px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-btn:hover { background: #243149; }
+.nav-btn.active { background: #2f5fa8; border-color: #7de3ff; color: #fff; box-shadow: 0 0 10px rgba(125,227,255,0.35); }
+.nav-btn.pilot.active { background: #8a4a2f; border-color: #ffd23f; box-shadow: 0 0 10px rgba(255,210,63,0.35); }
+
+/* ---------- Кнопка «В комнату пилота» на мехе ---------- */
+.go-pilot-btn {
+  position: absolute; left: 12px; bottom: 14px; z-index: 5;
+  background: rgba(27, 36, 51, 0.92); color: #ffd23f;
+  border: 1px solid #c9a227; border-radius: 10px;
+  padding: 9px 14px; font-size: 14px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  transition: background 0.15s, transform 0.15s;
+}
+.go-pilot-btn:hover { background: #c9a227; color: #14181f; transform: translateY(-2px); }
+
+@media (max-width: 700px) {
+  .dossier-inner { flex-direction: column; align-items: center; text-align: center; }
+  .dossier-list { font-size: 12.5px; }
+}
+
+/* ================= ТРЕНИРОВОЧНЫЙ АНГАР (арена) ================= */
+.nav-btn.arena.active { background: #7a2018; border-color: #ff6b6b; box-shadow: 0 0 10px rgba(255,92,92,0.4); }
+
+.arena-wrap { display: flex; flex-direction: column; gap: 10px; }
+
+.arena-scene {
+  position: relative;
+  border: 3px solid #39465c; border-radius: 14px; overflow: hidden;
+  background: #1c2331; max-height: 480px;
+}
+.arena-scene svg { shape-rendering: crispEdges; image-rendering: pixelated; display: block; width: 100%; }
+
+/* карточки бойцов */
+.fighter-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+.fcard {
+  flex: 1 1 140px; min-width: 150px;
+  background: #222c3d; border: 2px solid #39465c; border-radius: 10px;
+  padding: 8px 10px; transition: border-color .15s, box-shadow .15s;
+}
+.fcard.active { border-color: #ffd23f; box-shadow: 0 0 10px rgba(255,210,63,.35); }
+.fcard.player { border-left: 5px solid #4dd2ff; }
+.fcard.disabled { opacity: .6; }
+.fcard-name { font-weight: bold; font-size: 13.5px; color: #e8eefb; }
+.fcard-sub { font-size: 11.5px; color: #9fb0c8; margin-top: 2px; }
+.mini-hp { height: 8px; background: #131a26; border-radius: 4px; overflow: hidden; margin-top: 6px; border: 1px solid #2b3648; }
+.mini-hp i { display: block; height: 100%; transition: width .25s; }
+
+/* панель управления боем */
+.arena-controls {
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: start;
+  background: #222c3d; border: 2px solid #39465c; border-radius: 12px; padding: 10px;
+}
+@media (max-width: 900px) { .arena-controls { grid-template-columns: 1fr; } }
+.aim-title { font-size: 12.5px; color: #9fb0c8; margin-bottom: 6px; }
+.aim-picker { display: flex; flex-wrap: wrap; gap: 5px; }
+.aim-btn {
+  background: #1a2333; color: #cbd5e4; border: 1.5px solid #39465c; border-radius: 8px;
+  padding: 5px 9px; font-size: 12px; cursor: pointer; transition: all .12s;
+}
+.aim-btn:hover { background: #243149; }
+.aim-btn.on { background: #7a2018; border-color: #ff6b6b; color: #fff; box-shadow: 0 0 8px rgba(255,92,92,.4); }
+.target-info { font-size: 12.5px; color: #cbd5e4; line-height: 1.5; }
+.ti-title { font-size: 13.5px; margin-bottom: 4px; }
+.action-block { display: flex; flex-direction: column; gap: 8px; }
+.attack-btn {
+  background: linear-gradient(#ff6b6b, #c0392b); color: #fff; font-weight: bold;
+  border: 2px solid #7a2018; border-radius: 10px; padding: 14px 22px; font-size: 17px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(192,57,43,.5); transition: transform .1s;
+}
+.attack-btn:hover:not(:disabled) { transform: scale(1.05); }
+.attack-btn:disabled { opacity: .45; cursor: default; }
+.reset-btn {
+  background: #1a2333; color: #7de3ff; border: 1.5px solid #2b6f8f; border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; cursor: pointer;
+}
+.reset-btn:hover { background: #243149; }
+
+/* журнал боя */
+.battle-log {
+  background: #131a26; border: 2px solid #2b3648; border-radius: 10px;
+  padding: 8px 12px; max-height: 170px; overflow-y: auto;
+  font-family: "Consolas", monospace; font-size: 12px;
+}
+.blog-line { padding: 2px 0; border-bottom: 1px dashed #222c3d; color: #9fb0c8; }
+.blog-line.good { color: #7dff9e; }
+.blog-line.crit { color: #ffd23f; font-weight: bold; }
+.blog-line.bad { color: #ff6b6b; }
+.blog-line.warn { color: #ffb347; }
+
+/* баннер результата */
+.battle-result {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
+  padding: 10px 22px; border-radius: 12px; font-weight: bold; font-size: 16px;
+  z-index: 6; box-shadow: 0 6px 20px rgba(0,0,0,.6); animation: pop .3s ease-out;
+}
+.battle-result.win { background: #1e6b3a; color: #d6ffdf; border: 2px solid #7dff9e; }
+.battle-result.lose { background: #6b1e1e; color: #ffd6d6; border: 2px solid #ff6b6b; }
+@keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+/* кнопка арены на мехе */
+.go-pilot-btn.arena-btn { color: #ff9d9d; border-color: #c0392b; }
+.go-pilot-btn.arena-btn:hover { background: #c0392b; color: #fff; }
+
+</style>
+  <style>
+    #robotSvg, .hangar svg, .room-scene svg { shape-rendering: crispEdges; image-rendering: pixelated; }
+    /* декор ангара — только фон, клики проходят сквозь него к меху */
+    #decorBack, #decorFront { pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1 id="screenTitle">🏗️ Ангар: Мех-конструктор (с пилотом)</h1>
+      <div class="total-stats" id="totalStats"></div>
+      <div class="nav-btns">
+        <button class="nav-btn" id="btnHangar">🏗️ Ангар</button>
+        <button class="nav-btn pilot" id="btnPilotRoom">🪑 Комната пилота</button>
+        <button class="nav-btn arena" id="btnArena">🎯 Тренировочный ангар</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ===== ЭКРАН: КОМНАТА ПИЛОТА (скрыт по умолчанию) ===== -->
+      <section class="pilot-room" id="pilotRoom" hidden>
+        <div class="room-scene">
+          <svg viewBox="0 0 900 560" width="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#3a4258"/><stop offset="1" stop-color="#2a3143"/>
+              </linearGradient>
+              <linearGradient id="deskGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#8a5a34"/><stop offset="1" stop-color="#6b421f"/>
+              </linearGradient>
+              <linearGradient id="lampLight" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/>
+                <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+              </linearGradient>
+              <filter id="folderShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+
+            <!-- стена и пол комнаты -->
+            <rect x="0" y="0" width="900" height="400" fill="url(#wallGrad)"/>
+            <rect x="0" y="400" width="900" height="160" fill="#20222c"/>
+            <rect x="0" y="398" width="900" height="6" fill="#171921"/>
+
+            <!-- окно с видом на ангар -->
+            <rect x="60" y="60" width="220" height="160" rx="6" fill="#101828" stroke="#55617a" stroke-width="8"/>
+            <line x1="170" y1="64" x2="170" y2="216" stroke="#55617a" stroke-width="6"/>
+            <line x1="64" y1="140" x2="276" y2="140" stroke="#55617a" stroke-width="6"/>
+            <!-- силуэт меха за окном -->
+            <g opacity="0.85">
+              <circle cx="120" cy="90" r="4" fill="#ffd23f"/>
+              <circle cx="150" cy="82" r="2.5" fill="#fff" opacity="0.8"/>
+              <path d="M150 200 L150 150 M138 200 L142 160 M162 200 L158 160" stroke="#0d1420" stroke-width="10"/>
+              <rect x="136" y="140" width="28" height="34" rx="4" fill="#0d1420"/>
+              <rect x="142" y="126" width="16" height="16" rx="3" fill="#0d1420"/>
+              <polygon points="140,118 160,118 150,108" fill="#0d1420"/>
+              <rect x="128" y="196" width="44" height="8" fill="#0d1420"/>
+            </g>
+
+            <!-- плакат «Слава пилотам мехов» -->
+            <g transform="rotate(-1.5 700 130)">
+              <rect x="600" y="55" width="200" height="150" rx="6" fill="#f4ecd8" stroke="#3a3226" stroke-width="5"/>
+              <polygon points="700,80 715,118 755,118 723,141 735,180 700,157 665,180 677,141 645,118 685,118" fill="#c0392b"/>
+              <text x="700" y="200" text-anchor="middle" font-family="Arial Black,Arial" font-weight="bold" font-size="15" fill="#3a3226">СЛАВА МЕХАНИКАМ!</text>
+            </g>
+
+            <!-- настольная лампа (свет) -->
+            <polygon points="330,250 300,430 560,430 520,250" fill="url(#lampLight)"/>
+            <rect x="352" y="420" width="70" height="10" rx="4" fill="#2e3440"/>
+            <line x1="387" y1="420" x2="387" y2="300" stroke="#2e3440" stroke-width="8"/>
+            <line x1="387" y1="300" x2="440" y2="262" stroke="#2e3440" stroke-width="8"/>
+            <path d="M418 246 L470 246 L456 286 L432 286 Z" fill="#3f7d5a" stroke="#2b5a40" stroke-width="4"/>
+            <ellipse cx="444" cy="288" rx="12" ry="4" fill="#ffe9a8"/>
+
+            <!-- письменный стол -->
+            <rect x="120" y="428" width="680" height="30" rx="8" fill="url(#deskGrad)" stroke="#4a2d12" stroke-width="4"/>
+            <rect x="150" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="744" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="560" y="458" width="180" height="70" rx="6" fill="#7a4c22" stroke="#4a2d12" stroke-width="4"/>
+            <circle cx="650" cy="493" r="8" fill="#c9a227"/>
+
+            <!-- кружка с кофе -->
+            <g transform="translate(238 386)">
+              <path d="M-6 -2 Q-14 -12 -4 -20 M4 -4 Q12 -14 2 -24" stroke="#cbd5e4" stroke-width="3" fill="none" opacity="0.6"/>
+              <rect x="-16" y="0" width="34" height="34" rx="6" fill="#dfe6ef" stroke="#9aa7bb" stroke-width="3"/>
+              <path d="M18 8 Q32 12 18 26" fill="none" stroke="#9aa7bb" stroke-width="5"/>
+              <ellipse cx="1" cy="2" rx="15" ry="4" fill="#5b3a1e"/>
+            </g>
+
+            <!-- ДВЕ ПАПКИ С ДЕЛАМИ ПИЛОТОВ (кликабельные) -->
+            <g class="folder folder-male" id="folderMale" transform="translate(430 344) rotate(-7 120 150)" data-pilot="male">
+              <title>Дело пилота: Артём «Ястреб» Соколов</title>
+            </g>
+            <g class="folder folder-female" id="folderFemale" transform="translate(560 350) rotate(6 120 150)" data-pilot="female">
+              <title>Дело пилота: Алиса «Ласточка» Верещагина</title>
+            </g>
+
+            <!-- карандаши в стакане -->
+            <g transform="translate(760 392)">
+              <rect x="-14" y="0" width="30" height="36" rx="5" fill="#33415c" stroke="#22304a" stroke-width="3"/>
+              <line x1="-6" y1="4" x2="-12" y2="-26" stroke="#ffd23f" stroke-width="5"/>
+              <line x1="2" y1="4" x2="2" y2="-32" stroke="#ff5c5c" stroke-width="5"/>
+              <line x1="10" y1="4" x2="16" y2="-24" stroke="#4dff88" stroke-width="5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="hint room-hint">Рабочий стол дежурного по ангара. На столе — две папки с личными делами пилотов. Нажмите на папку, чтобы открыть дело.</div>
+
+        <!-- Карточка дела пилота -->
+        <div class="dossier" id="dossier" hidden>
+          <div class="dossier-inner">
+            <button class="dossier-close" id="dossierClose" title="Закрыть дело">✖</button>
+            <div class="dossier-photo" id="dossierPhoto"></div>
+            <div class="dossier-info">
+              <h2 id="dossierName"></h2>
+              <div class="dossier-rank" id="dossierRank"></div>
+              <ul class="dossier-list" id="dossierList"></ul>
+              <div class="dossier-mech" id="dossierMech"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ЭКРАН: ТРЕНИРОВОЧНЫЙ АНГАР (скрыт по умолчанию) ===== -->
+      <section class="arena-wrap" id="arenaWrap" hidden>
+        <div class="fighter-cards" id="fighterCards"></div>
+        <div class="arena-scene">
+          <svg id="battleSvg" viewBox="-10 -10 420 540" width="100%" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="hangar-floor-label">Полигон • Тренировочный ангар №3</div>
+          <div class="battle-result" id="battleResult" hidden></div>
+        </div>
+        <div class="arena-controls">
+          <div class="aim-block">
+            <div class="aim-title">🎯 Прицел (по какой детали бить):</div>
+            <div class="aim-picker" id="aimPicker"></div>
+          </div>
+          <div class="target-info" id="targetInfo"></div>
+          <div class="action-block">
+            <button class="attack-btn" id="btnAttack">🔫 ОГОНЬ!</button>
+            <button class="reset-btn" id="btnReset">🔄 Новый бой</button>
+          </div>
+        </div>
+        <div class="battle-log" id="battleLog"></div>
+        <div class="hint">Учебные мехи: 🟦 «Разведчик» (лёгкая броня), 🟨 «Линия фронта» (средняя), 🟥 «Осадная крепость» (тяжёлая). Сбивайте ноги — цель замедлится, оружие — цель не сможет стрелять, кабина или голова — мех уничтожен.</div>
+      </section>
+
+      <!-- Ангар с роботом -->
+      <section class="hangar-wrap" id="hangarWrap">
+        <div class="hangar" id="hangar">
+          <svg id="robotSvg" viewBox="-10 -10 420 540" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2b3648"/>
+                <stop offset="1" stop-color="#1c2331"/>
+              </linearGradient>
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+
+            <!-- ===== ПИКСЕЛЬНЫЙ ДЕКОР АНГАРА (генерируется в decor.js) ===== -->
+            <g id="decorBack"></g>
+
+            <!-- Оружие на спине (за роботом) -->
+            <g id="part-weaponBack" class="robot-part" data-slot="weaponBack"></g>
+
+            <!-- Части робота (порядок отрисовки: ноги -> руки -> тело -> голова) -->
+            <g id="part-legs"   class="robot-part" data-slot="legs"   filter="url(#shadow)"></g>
+            <g id="part-armL"   class="robot-part" data-slot="armL"   filter="url(#shadow)"></g>
+            <g id="part-armR"   class="robot-part" data-slot="armR"   filter="url(#shadow)"></g>
+            <g id="part-body"   class="robot-part" data-slot="body"   filter="url(#shadow)"></g>
+            <g id="part-head"   class="robot-part" data-slot="head"   filter="url(#shadow)"></g>
+
+            <!-- Стволы оружия в руках (поверх рук) -->
+            <g id="part-weaponL" class="robot-part" data-slot="weaponL" filter="url(#shadow)"></g>
+            <g id="part-weaponR" class="robot-part" data-slot="weaponR" filter="url(#shadow)"></g>
+
+            <!-- Декор перед мехом: ящики, бочки, конус, тележка с запчастями -->
+            <g id="decorFront"></g>
+          </svg>
+
+          <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
+
+          <!-- Кабина пилота крупным планом (показывается при наведении на тело меха) -->
+          <div class="cockpit-tip" id="cockpitTip"></div>
+        </div>
+
+        <div class="hint">Нажмите на деталь или кабину пилота на мехе, чтобы заменить её. Наведите курсор на «Тело» — покажем кабину крупным планом.</div>
+      </section>
+
+      <!-- Панель управления -->
+      <aside class="panel">
+        <div class="slots" id="slotsList"></div>
+
+        <div class="picker" id="picker">
+          <div class="picker-title" id="pickerTitle">Выберите слот</div>
+          <div class="picker-cards" id="pickerCards"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+<script>
+/* =========================================================
+   parts.js — данные о деталях робота и их 2D-графика (SVG)
+   Три комплекта: лёгкий (light), средний (medium), тяжёлый (heavy)
+   Характеристики: сила, скорость, грузоподъёмность, вес, ХП
+   ========================================================= */
+
+// IIFE — изолируем переменные от глобальной области видимости
+(function () {
+
+const TIERS = {
+  light:  { name: "Лёгкий",  color: "#4dd2ff", icon: "🟦" },
+  medium: { name: "Средний", color: "#ffb347", icon: "🟨" },
+  heavy:  { name: "Тяжёлый", color: "#ff5c5c", icon: "🟥" },
+};
+
+const SLOTS = [
+  { id: "head", name: "Голова" },
+  { id: "armR", name: "Рука правая" },
+  { id: "armL", name: "Рука левая" },
+  { id: "body", name: "Тело (кабина пилота)" },
+  { id: "legs", name: "Ноги" },
+];
+
+// stats: str — сила, spd — скорость, cap — грузоподъёмность (кг), weight — вес детали (кг), hp — прочность
+const PARTS = {
+  head: {
+    light:  { label: "Сенсор-купол MK-1",   stats: { str: 1, spd: 8, cap: 2,  weight: 3,  hp: 20 } },
+    medium: { label: "Визор «Страж» T-200", stats: { str: 3, spd: 5, cap: 5,  weight: 8,  hp: 45 } },
+    heavy:  { label: "Мостовой блок «Бастион»", stats: { str: 6, spd: 2, cap: 9, weight: 18, hp: 80 } },
+  },
+  armR: {
+    light:  { label: "Манипулятор «Стриж»",  stats: { str: 3,  spd: 9, cap: 8,  weight: 4,  hp: 18 } },
+    medium: { label: "Серво-рука Т-2",       stats: { str: 7,  spd: 5, cap: 20, weight: 10, hp: 40 } },
+    heavy:  { label: "Гидроклешня «Атлас»",  stats: { str: 14, spd: 2, cap: 45, weight: 24, hp: 70 } },
+  },
+  armL: {
+    light:  { label: "Манипулятор «Стриж»",  stats: { str: 3,  spd: 9, cap: 8,  weight: 4,  hp: 18 } },
+    medium: { label: "Серво-рука Т-2",       stats: { str: 7,  spd: 5, cap: 20, weight: 10, hp: 40 } },
+    heavy:  { label: "Гидроклешня «Атлас»",  stats: { str: 14, spd: 2, cap: 45, weight: 24, hp: 70 } },
+  },
+  body: {
+    light:  { label: "Каркас «Перо»",        stats: { str: 2, spd: 7, cap: 15, weight: 8,  hp: 35 } },
+    medium: { label: "Корпус «Баланс» Б-3",  stats: { str: 5, spd: 5, cap: 35, weight: 18, hp: 70 } },
+    heavy:  { label: "Бронекорпус «Цитадель»", stats: { str: 9, spd: 2, cap: 80, weight: 42, hp: 130 } },
+  },
+  legs: {
+    light:  { label: "Пружины «Кенгуру»",    stats: { str: 2, spd: 10, cap: 10, weight: 5,  hp: 20 } },
+    medium: { label: "Шагоходы Х-3",         stats: { str: 6, spd: 6,  cap: 30, weight: 14, hp: 50 } },
+    heavy:  { label: "Экзоскелет «Мамонт»",  stats: { str: 11, spd: 2, cap: 70, weight: 30, hp: 90 } },
+  },
+};
+
+/* ---------- SVG-графика деталей (координаты под viewBox 400x520) ----------
+   Цвета меняются по комплекту: light — голубые/светлые, medium — оранжевые,
+   heavy — красные/тёмные.
+--------------------------------------------------------------------------- */
+
+function tierPalette(tier) {
+  if (tier === "light")  return { main: "#7de3ff", dark: "#3aa8d8", accent: "#e8fbff", joint: "#2b6f8f" };
+  if (tier === "medium") return { main: "#ffc06a", dark: "#d9822b", accent: "#fff1d6", joint: "#8f5a1b" };
+  return { main: "#ff7b7b", dark: "#c0392b", accent: "#ffd9d0", joint: "#7a2018" };
+}
+
+// Голова меха: угловатый «шлем» с V-образным гребнем, жёлтый визор, «рот-вентилятор»
+function svgHead(tier) {
+  const p = tierPalette(tier);
+  const crestH = tier === "heavy" ? 14 : tier === "medium" ? 20 : 26;
+  return `
+    <!-- шея -->
+    <rect x="188" y="104" width="24" height="16" fill="#232c3d"/>
+    <rect x="184" y="112" width="32" height="8" rx="3" fill="${p.dark}"/>
+    <!-- череп: трапеция, расширяется книзу -->
+    <path d="M178 46 L222 46 L236 76 L236 100 L164 100 L164 76 Z"
+          fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+    <!-- центральная пластина -->
+    <path d="M192 46 L208 46 L212 72 L188 72 Z" fill="${p.dark}" opacity="0.55"/>
+    <!-- V-образный гребень (антенны) -->
+    <path d="M200 ${70 - crestH * 0.2} L172 ${44 - crestH} L182 ${42 - crestH} L200 ${58 - crestH * 0.3} L218 ${42 - crestH} L228 ${44 - crestH} Z"
+          fill="${p.accent}" stroke="${p.dark}" stroke-width="2.5"/>
+    <circle cx="200" cy="56" r="4" fill="${p.joint}"/>
+    <!-- визор -->
+    <path d="M168 74 L232 74 L228 88 L172 88 Z" fill="#141b26" stroke="${p.dark}" stroke-width="2"/>
+    <rect x="176" y="77" width="20" height="7" rx="2" fill="#ffd23f"/>
+    <rect x="204" y="77" width="20" height="7" rx="2" fill="#ffd23f"/>
+    <!-- «рот»-вентилятор -->
+    <rect x="182" y="92" width="36" height="6" rx="2" fill="#10161f"/>
+    <line x1="188" y1="92" x2="188" y2="98" stroke="${p.dark}" stroke-width="1.5"/>
+    <line x1="196" y1="92" x2="196" y2="98" stroke="${p.dark}" stroke-width="1.5"/>
+    <line x1="204" y1="92" x2="204" y2="98" stroke="${p.dark}" stroke-width="1.5"/>
+    <line x1="212" y1="92" x2="212" y2="98" stroke="${p.dark}" stroke-width="1.5"/>`;
+}
+
+// Рука меха: массивная плечевая броня-трапеция, двухцилиндровый бицепс, предплечье-щит, клешня
+// armR — правая рука меха (справа на экране, x=294), armL — левая (слева, x=106)
+function svgArm(tier, side) {
+  const p = tierPalette(tier);
+  const x = side === "R" ? 294 : 106; // плечо
+  const dir = 1; // зеркалить не нужно — каждая рука рисуется на своей стороне
+  const g = (dx) => x + dx * dir;
+  const wPad = tier === "heavy" ? 30 : tier === "medium" ? 24 : 18;
+
+  return `
+    <!-- наплечник: трапеция, расширяется книзу -->
+    <path d="M${g(-wPad * 0.55)} 122 L${g(wPad * 0.55)} 122 L${g(wPad)} 166 L${g(-wPad)} 166 Z"
+          fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+    <line x1="${g(-wPad * 0.7)}" y1="${tier === "light" ? 152 : 148}" x2="${g(wPad * 0.7)}" y2="${tier === "light" ? 152 : 148}" stroke="${p.dark}" stroke-width="3" opacity="0.7"/>
+    <!-- шарнир плеча -->
+    <circle cx="${x}" cy="168" r="${tier === "heavy" ? 13 : 10}" fill="#2b3648" stroke="${p.dark}" stroke-width="3"/>
+    <!-- бицепс: два цилиндра -->
+    <rect x="${g(-11)}" y="172" width="10" height="56" rx="5" fill="${p.dark}"/>
+    <rect x="${g(1)}" y="172" width="10" height="56" rx="5" fill="${p.dark}"/>
+    <rect x="${g(-13)}" y="168" width="26" height="12" rx="5" fill="${p.main}" stroke="${p.dark}" stroke-width="3"/>
+    <!-- локоть -->
+    <circle cx="${x}" cy="232" r="${tier === "heavy" ? 11 : 9}" fill="${p.joint}" stroke="${p.dark}" stroke-width="3"/>
+    <!-- предплечье-щит -->
+    <path d="M${g(-12)} 240 L${g(12)} 240 L${g(15)} 292 L${g(-15)} 292 Z"
+          fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+    <line x1="${g(-9)}" y1="256" x2="${g(9)}" y2="256" stroke="${p.dark}" stroke-width="2.5"/>
+    <line x1="${g(-10)}" y1="268" x2="${g(10)}" y2="268" stroke="${p.dark}" stroke-width="2.5"/>
+    <!-- кисть-клешня -->
+    <rect x="${g(-9)}" y="292" width="18" height="12" rx="4" fill="#2b3648"/>
+    <path d="M${g(-9)} 304 L${g(-14)} 322 L${g(-6)} 320 L${g(-3)} 306 Z" fill="${p.dark}"/>
+    <path d="M${g(9)} 304 L${g(14)} 322 L${g(6)} 320 L${g(3)} 306 Z" fill="${p.dark}"/>`;
+}
+
+// Торс меха: трапеция с широкой «грудью», панелью-вентилятором И КАБИНА ПИЛОТА
+function svgBody(tier) {
+  const p = tierPalette(tier);
+  const halfW = tier === "heavy" ? 68 : tier === "medium" ? 58 : 48;
+  const topY = tier === "heavy" ? 108 : 112;
+  return `
+    <!-- основной корпус: трапеция, расширяется книзу -->
+    <path d="M${200 - halfW * 0.72} ${topY} L${200 + halfW * 0.72} ${topY} L${200 + halfW} 236 L${200 - halfW} 236 Z"
+          fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <!-- грудная плита -->
+    <path d="M${200 - halfW * 0.5} ${topY + 6} L${200 + halfW * 0.5} ${topY + 6} L${200 + halfW * 0.6} ${topY + 34} L${200 - halfW * 0.6} ${topY + 34} Z"
+          fill="${p.dark}" opacity="0.5"/>
+    <!-- боковые воздухозаборники -->
+    <rect x="${200 - halfW + 6}" y="${topY + 40}" width="12" height="26" rx="3" fill="#10161f"/>
+    <rect x="${200 + halfW - 18}" y="${topY + 40}" width="12" height="26" rx="3" fill="#10161f"/>
+    <!-- центральная решётка-радиатор -->
+    <rect x="184" y="${topY + 12}" width="32" height="18" rx="3" fill="#10161f"/>
+    <line x1="190" y1="${topY + 12}" x2="190" y2="${topY + 30}" stroke="${p.dark}" stroke-width="1.5"/>
+    <line x1="200" y1="${topY + 12}" x2="200" y2="${topY + 30}" stroke="${p.dark}" stroke-width="1.5"/>
+    <line x1="210" y1="${topY + 12}" x2="210" y2="${topY + 30}" stroke="${p.dark}" stroke-width="1.5"/>
+    <!-- талия / бедренный блок -->
+    <rect x="172" y="236" width="56" height="14" rx="5" fill="#2b3648"/>
+    <!-- ==== КАБИНА ПИЛОТА (отсекается по форме иллюминатора) ==== -->
+    <clipPath id="cockpitClip">
+      <path d="M176 156 L224 156 L230 172 L230 206 L170 206 L170 172 Z"/>
+    </clipPath>
+    <g clip-path="url(#cockpitClip)">
+      <rect x="168" y="154" width="64" height="56" fill="#0c1320"/>
+      <!-- приборная панель со огоньками -->
+      <rect x="168" y="196" width="64" height="12" fill="#1c2a3d"/>
+      <circle cx="178" cy="202" r="1.8" fill="#ff5c5c"/>
+      <circle cx="186" cy="202" r="1.8" fill="#ffd23f"/>
+      <circle cx="194" cy="202" r="1.8" fill="#4dff88"/>
+      <circle cx="206" cy="202" r="1.8" fill="#4dd2ff"/>
+      <circle cx="214" cy="202" r="1.8" fill="#ffd23f"/>
+      <circle cx="222" cy="202" r="1.8" fill="#ff5c5c"/>
+      <!-- ПИЛОТ: кресло -->
+      <rect x="186" y="168" width="26" height="34" rx="6" fill="#232f42"/>
+      <!-- торс в скафандре -->
+      <rect x="190" y="176" width="18" height="24" rx="5" fill="#3e5068"/>
+      <rect x="190" y="182" width="18" height="4" fill="${p.accent}" opacity="0.9"/>
+      <!-- руки к рычагам -->
+      <line x1="192" y1="182" x2="185" y2="196" stroke="#3e5068" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="206" y1="182" x2="213" y2="196" stroke="#3e5068" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="185" cy="196" r="2.2" fill="#c9d6ea"/>
+      <circle cx="213" cy="196" r="2.2" fill="#c9d6ea"/>
+      <!-- шлем с визором -->
+      <circle cx="199" cy="168" r="8" fill="#dbe6f4"/>
+      <path d="M193 166 a7 7 0 0 1 12 0 l-1 4 h-10 Z" fill="#7de3ff" opacity="0.85"/>
+      <!-- рычаги управления -->
+      <rect x="181" y="198" width="8" height="3" rx="1.5" fill="#5a6b83"/>
+      <rect x="209" y="198" width="8" height="3" rx="1.5" fill="#5a6b83"/>
+      <!-- блик стекла -->
+      <path d="M172 206 L196 156 L204 156 L180 206 Z" fill="#ffffff" opacity="0.07"/>
+    </g>
+    <!-- рама иллюминатора поверх -->
+    <path d="M176 156 L224 156 L230 172 L230 206 L170 206 L170 172 Z"
+          fill="none" stroke="${p.dark}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M176 156 L224 156 L230 172 L230 206 L170 206 L170 172 Z"
+          fill="none" stroke="#0d1420" stroke-width="1.5"/>`;
+}
+
+// Кабина крупным планом — для всплывающей подсказки при наведении на тело
+function svgCockpitZoom() {
+  return `
+    <svg viewBox="160 146 80 72" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <rect x="160" y="146" width="80" height="72" fill="#10151f"/>
+      <path d="M176 156 L224 156 L230 172 L230 206 L170 206 L170 172 Z" fill="#0c1320" stroke="#5a6b83" stroke-width="4"/>
+      <rect x="168" y="196" width="64" height="12" fill="#1c2a3d"/>
+      <circle cx="178" cy="202" r="1.8" fill="#ff5c5c"/><circle cx="186" cy="202" r="1.8" fill="#ffd23f"/>
+      <circle cx="194" cy="202" r="1.8" fill="#4dff88"/><circle cx="206" cy="202" r="1.8" fill="#4dd2ff"/>
+      <circle cx="214" cy="202" r="1.8" fill="#ffd23f"/><circle cx="222" cy="202" r="1.8" fill="#ff5c5c"/>
+      <rect x="186" y="168" width="26" height="34" rx="6" fill="#232f42"/>
+      <rect x="190" y="176" width="18" height="24" rx="5" fill="#3e5068"/>
+      <rect x="190" y="182" width="18" height="4" fill="#7de3ff"/>
+      <line x1="192" y1="182" x2="185" y2="196" stroke="#3e5068" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="206" y1="182" x2="213" y2="196" stroke="#3e5068" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="199" cy="168" r="8" fill="#dbe6f4"/>
+      <path d="M193 166 a7 7 0 0 1 12 0 l-1 4 h-10 Z" fill="#7de3ff" opacity="0.85"/>
+    </svg>`;
+}
+
+// Ноги меха: V-образный таз, бронированные бёдра, обратный («козлий») сустав, широкие ступни
+function svgLegs(tier) {
+  const p = tierPalette(tier);
+  const hipHalf = tier === "heavy" ? 44 : tier === "medium" ? 38 : 32;
+  const thigW = tier === "heavy" ? 26 : tier === "medium" ? 21 : 16;
+  const shinW = tier === "heavy" ? 22 : tier === "medium" ? 18 : 14;
+  const footH = tier === "heavy" ? 22 : tier === "medium" ? 18 : 14;
+  const groundY = 448; // уровень пола в viewBox
+
+  function leg(cx) {
+    const kneeY = 344;
+    const ankleY = 400;
+    return `
+      <!-- бедро: верх широкий, сужается к колену -->
+      <path d="M${cx - thigW * 0.8} 250 L${cx + thigW * 0.8} 250 L${cx + thigW * 0.5} ${kneeY - 6} L${cx - thigW * 0.5} ${kneeY - 6} Z"
+            fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <!-- поршень привода бедра -->
+      <line x1="${cx + thigW * 0.55}" y1="258" x2="${cx + thigW * 0.35}" y2="${kneeY - 10}" stroke="#2b3648" stroke-width="5"/>
+      <!-- колено (обратный сустав) -->
+      <circle cx="${cx}" cy="${kneeY}" r="${thigW * 0.45}" fill="${p.joint}" stroke="${p.dark}" stroke-width="3"/>
+      <!-- голень: щит, расширяется книзу -->
+      <path d="M${cx - shinW * 0.5} ${kneeY + 6} L${cx + shinW * 0.5} ${kneeY + 6} L${cx + shinW * 0.9} ${ankleY} L${cx - shinW * 0.9} ${ankleY} Z"
+            fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <line x1="${cx - shinW * 0.6}" y1="${kneeY + 26}" x2="${cx + shinW * 0.6}" y2="${kneeY + 26}" stroke="${p.dark}" stroke-width="2.5"/>
+      <!-- голеностоп -->
+      <rect x="${cx - shinW * 0.7}" y="${ankleY}" width="${shinW * 1.4}" height="8" rx="3" fill="#2b3648"/>
+      <!-- ступня: трапеция с носками -->
+      <path d="M${cx - shinW} ${ankleY + 8} L${cx + shinW} ${ankleY + 8} L${cx + shinW * 1.5} ${groundY - footH + 6} L${cx + shinW * 1.5} ${groundY} L${cx - shinW * 1.5} ${groundY} L${cx - shinW * 1.5} ${groundY - footH + 6} Z"
+            fill="${p.dark}" stroke="#0d1420" stroke-width="3"/>
+      <line x1="${cx - shinW * 0.5}" y1="${groundY - footH + 8}" x2="${cx - shinW * 0.5}" y2="${groundY - 2}" stroke="#0d1420" stroke-width="2"/>
+      <line x1="${cx + shinW * 0.5}" y1="${groundY - footH + 8}" x2="${cx + shinW * 0.5}" y2="${groundY - 2}" stroke="#0d1420" stroke-width="2"/>`;
+  }
+  const lx = 200 - hipHalf * 0.55, rx = 200 + hipHalf * 0.55;
+  return `
+    <!-- таз: V-образная деталь под корпусом -->
+    <path d="M158 236 L242 236 L232 262 L200 274 L168 262 Z"
+          fill="${p.dark}" stroke="#0d1420" stroke-width="3"/>
+    <circle cx="200" cy="252" r="7" fill="${p.joint}" stroke="#0d1420" stroke-width="2"/>
+    ${leg(lx)}
+    ${leg(rx)}`;
+}
+
+/* ---------- Оружие (3 слота × 3 комплекта) ----------
+   stats: dmg — урон за выстрел, rate — скорострельность (выстр/сек),
+   range — дальность (условные единицы по viewBox 400x520),
+   ammo — боезапас, energy — энергия на 1 очередь (мс), weight — вес (кг)
+------------------------------------------------------------------------- */
+const WEAPONS = {
+  weaponR: {
+    light:  { label: "Лазер «Игла» L-1",     stats: { dmg: 6,  rate: 8,  range: 170, ammo: 120, energy: 3,  weight: 3 } },
+    medium: { label: "Импульсер «Оса» P-22", stats: { dmg: 14, rate: 4,  range: 150, ammo: 80,  energy: 8,  weight: 9 } },
+    heavy:  { label: "Гаусс-пушка «Молот» G-7", stats: { dmg: 42, rate: 1.2, range: 210, ammo: 30, energy: 25, weight: 26 } },
+  },
+  weaponL: {
+    light:  { label: "Плазменный веер «Вейл»", stats: { dmg: 5,  rate: 9,  range: 120, ammo: 140, energy: 3,  weight: 3 } },
+    medium: { label: "Дробовик «Громобой» S-4", stats: { dmg: 20, rate: 2,  range: 90,  ammo: 48,  energy: 12, weight: 11 } },
+    heavy:  { label: "Ракетница «Армагеддон» R-9", stats: { dmg: 55, rate: 0.8, range: 190, ammo: 12, energy: 30, weight: 30 } },
+  },
+  weaponBack: {
+    light:  { label: "Рой дронов «Стая» D-3",       stats: { dmg: 4,  rate: 10, range: 160, ammo: 100, energy: 2,  weight: 4 } },
+    medium: { label: "Ракетный блок «Залп» M-6",    stats: { dmg: 18, rate: 3,  range: 180, ammo: 60,  energy: 10, weight: 14 } },
+    heavy:  { label: "Орбитальная линия «Дамоклов меч» O-1", stats: { dmg: 80, rate: 0.5, range: 240, ammo: 6, energy: 40, weight: 34 } },
+  },
+};
+
+const WEAPON_SLOTS = [
+  { id: "weaponR",    name: "Оружие правое" },
+  { id: "weaponL",    name: "Оружие левое" },
+  { id: "weaponBack", name: "Оружие на спине" },
+];
+
+// Графика оружия (крепится к руке / спине робота; кисть на y≈305, ствол смотрит вперёд-вниз)
+function svgWeapon(slotId, tier) {
+  const p = tierPalette(tier);
+  if (slotId === "weaponR") {
+    // ствол из правой руки (кисть ~ x=294, y≈305)
+    return `
+      <rect x="304" y="298" width="48" height="13" rx="5" fill="#39465c" stroke="#0d1420" stroke-width="2"/>
+      <rect x="346" y="300.5" width="18" height="8" rx="3" fill="${p.dark}"/>
+      <circle cx="366" cy="304.5" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="312" y="288" width="26" height="10" rx="4" fill="${p.joint}"/><rect x="308" y="311" width="30" height="7" rx="3" fill="${p.dark}"/>` : ""}
+      ${tier === "medium" ? `<rect x="316" y="311" width="20" height="6" rx="3" fill="${p.dark}"/>` : ""}`;
+  }
+  if (slotId === "weaponL") {
+    return `
+      <rect x="80" y="298" width="48" height="13" rx="5" fill="#39465c" stroke="#0d1420" stroke-width="2"/>
+      <rect x="68" y="300.5" width="18" height="8" rx="3" fill="${p.dark}"/>
+      <circle cx="66" cy="304.5" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="94" y="288" width="26" height="10" rx="4" fill="${p.joint}"/><rect x="92" y="311" width="30" height="7" rx="3" fill="${p.dark}"/>` : ""}
+      ${tier === "medium" ? `<rect x="96" y="311" width="20" height="6" rx="3" fill="${p.dark}"/>` : ""}`;
+  }
+  // weaponBack — ранец/башня за плечами меха (над корпусом, y 84..118)
+  const w = tier === "light" ? 56 : tier === "medium" ? 72 : 92;
+  const hgt = tier === "light" ? 26 : tier === "medium" ? 32 : 38;
+  const topY = 118 - hgt;
+  const barrels = [];
+  const n = tier === "light" ? 4 : tier === "medium" ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const bx = 200 - w / 2 + 12 + i * ((w - 24) / Math.max(1, n - 1));
+    barrels.push(`<rect x="${(bx - 4).toFixed(1)}" y="${topY - 8}" width="8" height="12" rx="3" fill="#39465c" stroke="#0d1420" stroke-width="1.5"/><circle cx="${bx.toFixed(1)}" cy="${topY - 8}" r="3.5" fill="#fff7c0" stroke="${p.joint}" stroke-width="2"/>`);
+  }
+  return `
+    <rect x="${200 - w / 2}" y="${topY}" width="${w}" height="${hgt}" rx="7" fill="${p.dark}" stroke="#0d1420" stroke-width="2.5"/>
+    <rect x="${200 - w / 2 + 6}" y="${topY + 8}" width="${w - 12}" height="6" rx="3" fill="${p.main}" opacity="0.7"/>
+    ${barrels.join("")}`;
+}
+
+const SVG_DRAW = {
+  head: (t) => svgHead(t),
+  body: (t) => svgBody(t),
+  legs: (t) => svgLegs(t),
+  armR: (t) => svgArm(t, "R"),
+  armL: (t) => svgArm(t, "L"),
+};
+
+window.PART_DATA = { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon, svgCockpitZoom };
+
+})();
+
+</script>
+
+<script>
+/* =========================================================
+   decor.js — пиксельное наполнение ангара (SVG, crispEdges)
+   Всё рисуется «квадратиками» по сетке 4px: стены, фермы,
+   ворота, кран-балка, стеллажи с запчастями, ящики, бочки,
+   тележка, конусы, масло, кабели, робот-погрузчик.
+   ========================================================= */
+(function () {
+  const P = 4; // размер «пикселя»
+  const px = (x, y, w, h, c) =>
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+
+  // ---- фоновая стена, пол, конструкции ----
+  function backLayer() {
+    let s = "";
+    // стена ангара
+    s += px(-10, -10, 420, 380, "#232c3d");
+    // панели стены (вертикальные швы)
+    for (let x = -6; x < 410; x += 52) s += px(x, -10, P, 380, "#1b2331");
+    // горизонтальный пояс стены
+    s += px(-10, 120, 420, P * 2, "#1b2331");
+    s += px(-10, 128, 420, P, "#2e3a52");
+    // верхние окна-иллюминаторы (жёлтый свет)
+    for (let i = 0; i < 5; i++) {
+      const x = 18 + i * 84;
+      s += px(x, 14, 40, 20, "#10161f");
+      s += px(x + P, 14 + P, 32, 12, i % 2 ? "#ffd23f" : "#ffdd6e");
+      s += px(x + P, 14 + P, 32, P, "#fff3b0"); // блик
+    }
+    // ферма под потолком (диагональные решётки квадратиками)
+    s += px(-10, 44, 420, P * 2, "#39465c");
+    s += px(-10, 72, 420, P * 2, "#39465c");
+    for (let x = -8; x < 408; x += 24) {
+      s += px(x, 52, P * 2, P * 2, "#39465c");
+      s += px(x + 12, 60, P * 2, P * 2, "#39465c");
+      s += px(x + 8, 52, P * 2, P * 2, "#39465c");
+      s += px(x + 16, 60, P * 2, P * 2, "#39465c");
+    }
+    // опорные балки
+    s += px(2, -10, P * 4, 380, "#2e3a52");
+    s += px(392, -10, P * 4, 380, "#2e3a52");
+    // кран-балка с цепью и крюком
+    s += px(60, 88, 300, P * 3, "#f2a33c");
+    s += px(60, 88, P, P * 3, "#c77f22");
+    s += px(176, 96, P * 5, P * 3, "#39465c"); // тележка крана
+    for (let y = 108; y < 150; y += 6) s += px(186, y, P * 2, P * 2, "#8b97ab"); // цепь
+    s += px(184, 150, P * 3, P * 2, "#c9ced9"); // скоба крюка
+    s += px(186, 158, P * 2, P * 2, "#c9ced9");
+    s += px(188, 162, P * 2, P * 2, "#c9ced9");
+    s += px(190, 158, P * 2, P, "#c9ced9");
+
+    // ---- большие ворота ангара слева ----
+    s += px(-10, 150, 108, 220, "#1a2130");
+    s += px(-10, 150, 108, P * 2, "#39465c");
+    for (let x = -6; x < 96; x += 20) s += px(x, 158, P, 212, "#232c3d"); // секции
+    s += px(-10, 340, 108, P * 3, "#f2a33c");
+    s += px(-10, 340, 108, P, "#ffdd6e");
+    // предупредительные полосы на раме ворот
+    for (let y = 158; y < 360; y += 16) {
+      s += px(90, y, P * 3, 8, "#f2a33c");
+      s += px(90, y + 8, P * 3, 8, "#10161f");
+    }
+
+    // ---- прожекторы на стене ----
+    for (const x of [120, 268, 356]) {
+      s += px(x, 96, P * 4, P * 2, "#39465c");
+      s += px(x + P, 104, P * 3, P * 2, "#ffe9a8");
+      // конус света (полупрозрачный, из квадратиков)
+      for (let r = 0; r < 4; r++)
+        s += `<rect x="${x - 4 + r * -2}" y="${112 + r * 10}" width="${24 + r * 8}" height="10" fill="#ffe9a8" opacity="0.05"/>`;
+    }
+
+    // ---- задний стеллаж с запчастями (справа) ----
+    const sx = 300, sy = 190;
+    s += px(sx, sy, 96, P * 2, "#4a5a75");            // верхняя полка
+    s += px(sx, sy + 44, 96, P * 2, "#4a5a75");       // средняя
+    s += px(sx, sy + 88, 96, P * 2, "#4a5a75");       // нижняя
+    s += px(sx, sy, P * 2, 180, "#39465c");           // стойки
+    s += px(sx + 88, sy, P * 2, 180, "#39465c");
+    s += px(sx + 44, sy, P * 2, 180, "#39465c");
+    // запчасти: шестерни (квадратичные), цилиндры, головы-заготовки
+    s += px(sx + 8, sy - 20, 16, 20, "#8b97ab");
+    s += px(sx + 10, sy - 24, 12, 4, "#c9ced9");
+    s += px(sx + 30, sy - 16, 12, 16, "#4dd2ff");     // банка смазки
+    s += px(sx + 30, sy - 20, 12, 4, "#2b8fb5");
+    s += px(sx + 52, sy - 26, 20, 26, "#5c6b84");     // ящик ЗИП
+    s += px(sx + 54, sy - 20, 16, P, "#f2a33c");
+    s += px(sx + 76, sy - 18, 12, 18, "#ff7b7b");     //red part
+    s += px(sx + 8, sy + 24, 18, 20, "#c0392b");      // бочонок
+    s += px(sx + 8, sy + 28, 18, P, "#7a2018");
+    s += px(sx + 30, sy + 22, 12, 22, "#8b97ab");
+    s += px(sx + 46, sy + 26, 26, 18, "#39465c");     // гусеница/резина
+    s += px(sx + 48, sy + 30, 4, 4, "#8b97ab");
+    s += px(sx + 56, sy + 30, 4, 4, "#8b97ab");
+    s += px(sx + 64, sy + 30, 4, 4, "#8b97ab");
+    s += px(sx + 78, sy + 20, 14, 24, "#ffd23f");     // канистра
+    s += px(sx + 82, sy + 16, 6, 4, "#c9a227");
+    s += px(sx + 10, sy + 68, 20, 20, "#4dd2ff");     // корпусная деталь
+    s += px(sx + 14, sy + 72, 12, 4, "#bff0ff");
+    s += px(sx + 36, sy + 64, 16, 24, "#5c6b84");
+    s += px(sx + 58, sy + 70, 24, 18, "#2e3a52");
+    s += px(sx + 60, sy + 74, 20, P, "#8b97ab");
+    s += px(sx + 86, sy + 66, 8, 22, "#ff5c5c");
+
+    // ---- плакат на стене ----
+    s += px(214, 150, 64, 44, "#f4ecd8");
+    s += px(214, 150, 64, P, "#3a3226");
+    s += px(216, 156, 20, 20, "#c0392b");             // звезда упрощённая
+    s += px(222, 152, 8, 28, "#c0392b");
+    s += px(212, 162, 28, 8, "#c0392b");
+    s += px(242, 158, 32, P * 2, "#3a3226");          // текст-полоски
+    s += px(242, 168, 26, P * 2, "#3a3226");
+    s += px(242, 178, 30, P * 2, "#3a3226");
+
+    // ---- пол: плитка + разметка сектора сборки ----
+    s += px(-10, 360, 420, 170, "#2b3648");
+    for (let x = -10; x < 410; x += 32) s += px(x, 360, P / 2, 170, "#242e3e");
+    for (let y = 368; y < 530; y += 28) s += px(-10, y, 420, P / 2, "#242e3e");
+    // жёлтая разметка
+    for (let x = -10; x < 410; x += 24) {
+      s += px(x, 362, 14, P * 2, "#f2a33c");
+      s += px(x, 362, 14, P, "#ffdd6e");
+    }
+    s += px(120, 470, P * 2, 60, "#f2a33c");
+    s += px(268, 470, P * 2, 60, "#f2a33c");
+    for (let y = 470; y < 530; y += 16) {
+      s += px(128, y, 132, P * 2, "#f2a33c");
+    }
+    return s;
+  }
+
+  // ---- объекты перед мехом ----
+  function frontLayer() {
+    let s = "";
+    // тень под мехом уже в CSS; добавим масляное пятно
+    s += px(150, 500, 40, P * 2, "#141b26");
+    s += px(160, 508, 24, P, "#141b26");
+
+    // ---- стопка ящиков слева ----
+    const crate = (x, y, w, h, c, d) => {
+      let o = px(x, y, w, h, c) + px(x, y, w, P, d) + px(x, y + h - P, w, P, d) +
+              px(x, y, P, h, d) + px(x + w - P, y, P, h, d) +
+              px(x + 4, y + h / 2 - P, w - 8, P * 2, d);
+      return o;
+    };
+    s += crate(24, 452, 56, 44, "#7a4c22", "#4a2d12");
+    s += crate(32, 412, 44, 40, "#8a5a34", "#5a3a1c");
+    s += px(36, 420, 12, 12, "#4dd2ff"); // маркировка «хрупкое»
+    s += px(56, 424, 16, P, "#ffd23f");
+    // гаечный ключ прислонён
+    s += px(84, 468, P * 2, 40, "#8b97ab");
+    s += px(80, 462, 12, 10, "#8b97ab");
+    s += px(84, 466, 4, 4, "#232c3d");
+
+    // ---- бочки справа ----
+    const barrel = (x, y, c, d) =>
+      px(x, y, 28, 44, c) + px(x, y, 28, P, d) + px(x, y + 12, 28, P * 2, d) +
+      px(x, y + 30, 28, P * 2, d) + px(x + 4, y + 4, 4, 4, "#ffffff") ;
+    s += barrel(330, 448, "#c0392b", "#7a2018");
+    s += barrel(356, 456, "#2e8b57", "#1d5c39");
+    // канистра масла
+    s += px(318, 486, 16, 22, "#ffd23f");
+    s += px(322, 482, 8, 4, "#c9a227");
+    s += px(320, 492, 12, P, "#7a5b12");
+
+    // ---- конус безопасности ----
+    s += px(292, 508, 32, P * 2, "#10161f");
+    s += px(300, 492, 16, 16, "#ff7b3d");
+    s += px(304, 480, 8, 12, "#ff7b3d");
+    s += px(306, 472, 4, 8, "#ff7b3d");
+    s += px(302, 496, 12, P * 2, "#ffffff");
+    s += px(305, 484, 6, P * 2, "#ffffff");
+
+    // ---- тележка с запчастями (перед ногами, не загораживает) ----
+    s += px(12, 500, 84, P * 3, "#39465c");           // столешница
+    s += px(12, 500, 84, P, "#8b97ab");
+    s += px(16, 512, P * 2, 16, "#2e3a52");
+    s += px(88, 512, P * 2, 16, "#2e3a52");
+    s += px(12, 528, 8, 8, "#10161f");                // колёса
+    s += px(84, 528, 8, 8, "#10161f");
+    // детали на тележке: рука-заготовка, визор, патроны
+    s += px(20, 486, 26, 14, "#ffc06a");
+    s += px(24, 482, 18, 4, "#d9822b");
+    s += px(52, 488, 14, 12, "#ffd23f");
+    s += px(54, 490, 10, 4, "#141b26");
+    s += px(72, 490, 4, 10, "#c0392b");
+    s += px(78, 490, 4, 10, "#c0392b");
+    s += px(84, 490, 4, 10, "#c0392b");
+
+    // ---- шланг/кабель на полу ----
+    for (let x = 110; x < 150; x += 8) s += px(x, 520, 6, P, "#f2a33c");
+    s += px(104, 516, 8, 12, "#39465c");
+
+    // ---- робот-погрузчик (маленький дрон-техник слева у ворот) ----
+    s += px(40, 380, 36, 20, "#4dd2ff");
+    s += px(40, 380, 36, P, "#2b8fb5");
+    s += px(46, 372, 12, 8, "#10161f");               // «глаз»
+    s += px(48, 374, 4, 4, "#ffd23f");
+    s += px(44, 400, 8, 8, "#10161f");                // колёса
+    s += px(64, 400, 8, 8, "#10161f");
+    s += px(76, 386, 12, P * 2, "#8b97ab");           // манипулятор
+    s += px(86, 382, P * 2, 12, "#8b97ab");
+
+    // ---- лампы под потолком переднего плана ----
+    for (const x of [70, 200, 330]) {
+      s += px(x + 12, -10, P, 14, "#8b97ab");
+      s += px(x, 4, 28, P * 2, "#39465c");
+      s += px(x + 4, 12, 20, P, "#fff3b0");
+    }
+    return s;
+  }
+
+  window.HANGAR_DECOR = {
+    render() {
+      const b = document.getElementById("decorBack");
+      const f = document.getElementById("decorFront");
+      if (b) b.innerHTML = backLayer();
+      if (f) f.innerHTML = frontLayer();
+    },
+    // доступ к слоям для тренировочного ангара (arena.js)
+    backLayer,
+    frontLayer,
+  };
+})();
+
+</script>
+
+<script>
+/* pilotroom.js — комната пилота: рабочий стол, две папки с делами, аниме-портреты */
+(function () {
+  "use strict";
+
+  /* ---------- Аниме-портрет: пилот-парень (Артём «Ястреб» Соколов) ---------- */
+  function svgPilotM() {
+    return `
+    <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pmBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1d2b45"/><stop offset="1" stop-color="#0f1626"/>
+        </linearGradient>
+        <clipPath id="pmHair"><path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z"/></clipPath>
+      </defs>
+      <rect width="200" height="240" rx="10" fill="url(#pmBg)"/>
+      <circle cx="100" cy="70" r="46" fill="#2a3c5e" opacity="0.5"/>
+      <!-- шея -->
+      <rect x="90" y="128" width="20" height="26" rx="6" fill="#e8b48c"/>
+      <!-- китель лётчика -->
+      <path d="M40 240 L46 178 Q52 156 78 150 L100 158 L122 150 Q148 156 154 178 L160 240 Z" fill="#33486b" stroke="#22304a" stroke-width="3"/>
+      <path d="M78 150 L100 158 L122 150 L118 240 L82 240 Z" fill="#3d5680"/>
+      <path d="M92 152 L100 176 L108 152 L100 146 Z" fill="#dbe6f4"/>
+      <rect x="97" y="164" width="6" height="34" rx="2" fill="#c9a227"/>
+      <polygon points="97,164 103,164 100,172" fill="#ffd23f"/>
+      <rect x="56" y="184" width="20" height="12" rx="2" fill="#c9a227" opacity="0.85"/>
+      <rect x="124" y="184" width="20" height="12" rx="2" fill="#ff5c5c" opacity="0.8"/>
+      <!-- голова -->
+      <path d="M64 84 Q64 132 100 138 Q136 132 136 84 L136 70 Q136 44 100 42 Q64 44 64 70 Z" fill="#f2c29be8" stroke="#d99a6c" stroke-width="2"/>
+      <path d="M64 84 Q64 132 100 138 Q136 132 136 84 L136 70 Q136 44 100 42 Q64 44 64 70 Z" fill="#f3c79e"/>
+      <!-- уши -->
+      <ellipse cx="63" cy="94" rx="6" ry="10" fill="#f3c79e" stroke="#d99a6c" stroke-width="1.5"/>
+      <ellipse cx="137" cy="94" rx="6" ry="10" fill="#f3c79e" stroke="#d99a6c" stroke-width="1.5"/>
+      <!-- волосы тёмно-синие, аниме-чёлка -->
+      <g clip-path="url(#pmHair)">
+        <path d="M52 30 L148 30 L148 96 L52 96 Z" fill="#232f52"/>
+        <path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z" fill="#2c3a66"/>
+        <path d="M70 40 Q100 26 130 40 L126 52 Q100 40 74 52 Z" fill="#3d5288" opacity="0.9"/>
+      </g>
+      <path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z"
+            fill="none" stroke="#1a2340" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- брови -->
+      <path d="M74 86 Q84 82 92 86" stroke="#1a2340" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M108 86 Q116 82 126 86" stroke="#1a2340" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <!-- глаза большие, аниме -->
+      <ellipse cx="83" cy="100" rx="10" ry="12" fill="#fff"/>
+      <ellipse cx="117" cy="100" rx="10" ry="12" fill="#fff"/>
+      <circle cx="84" cy="101" r="7" fill="#2f7fd6"/>
+      <circle cx="116" cy="101" r="7" fill="#2f7fd6"/>
+      <circle cx="84" cy="102" r="3.4" fill="#101a2e"/>
+      <circle cx="116" cy="102" r="3.4" fill="#101a2e"/>
+      <circle cx="81" cy="97" r="2.2" fill="#fff"/>
+      <circle cx="113" cy="97" r="2.2" fill="#fff"/>
+      <path d="M73 92 Q83 86 93 92" stroke="#1a2340" stroke-width="2.6" fill="none"/>
+      <path d="M107 92 Q117 86 127 92" stroke="#1a2340" stroke-width="2.6" fill="none"/>
+      <!-- нос и рот -->
+      <path d="M100 108 l-2.5 8 h5" stroke="#d99a6c" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M92 124 Q100 130 108 124" stroke="#a4553f" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <!-- rumянец -->
+      <ellipse cx="76" cy="114" rx="7" ry="3.4" fill="#e8896b" opacity="0.35"/>
+      <ellipse cx="124" cy="114" rx="7" ry="3.4" fill="#e8896b" opacity="0.35"/>
+    </svg>`;
+  }
+
+  /* ---------- Аниме-портрет: пилот-девушка (Алиса «Ласточка» Верещагина) ---------- */
+  function svgPilotF() {
+    return `
+    <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pfBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#45264a"/><stop offset="1" stop-color="#1c1430"/>
+        </linearGradient>
+      </defs>
+      <rect width="200" height="240" rx="10" fill="url(#pfBg)"/>
+      <circle cx="100" cy="70" r="46" fill="#6e3f7d" opacity="0.4"/>
+      <!-- длинные волосы за спиной -->
+      <path d="M56 96 Q44 150 58 214 L74 214 Q64 150 72 110 Z" fill="#7e4fa0"/>
+      <path d="M144 96 Q156 150 142 214 L126 214 Q136 150 128 110 Z" fill="#7e4fa0"/>
+      <!-- шея -->
+      <rect x="91" y="128" width="18" height="26" rx="6" fill="#f0bd97"/>
+      <!-- китель -->
+      <path d="M44 240 L50 178 Q56 158 80 152 L100 160 L120 152 Q144 158 150 178 L156 240 Z" fill="#4a3568" stroke="#33244a" stroke-width="3"/>
+      <path d="M80 152 L100 160 L120 152 L116 240 L84 240 Z" fill="#5b4280"/>
+      <path d="M93 154 L100 178 L107 154 L100 148 Z" fill="#ffeef5"/>
+      <rect x="97.5" y="166" width="5" height="32" rx="2" fill="#e0559d"/>
+      <rect x="58" y="186" width="18" height="11" rx="2" fill="#e0559d" opacity="0.85"/>
+      <rect x="124" y="186" width="18" height="11" rx="2" fill="#7de3ff" opacity="0.8"/>
+      <!-- лицо -->
+      <path d="M66 84 Q66 134 100 140 Q134 134 134 84 L134 70 Q134 46 100 44 Q66 46 66 70 Z" fill="#f8d3ac"/>
+      <!-- уши + серьги -->
+      <ellipse cx="65" cy="96" rx="5.5" ry="9" fill="#f8d3ac"/>
+      <ellipse cx="135" cy="96" rx="5.5" ry="9" fill="#f8d3ac"/>
+      <circle cx="65" cy="108" r="2.4" fill="#ffd23f"/>
+      <circle cx="135" cy="108" r="2.4" fill="#ffd23f"/>
+      <!-- чёлка и хвостик -->
+      <path d="M60 92 Q54 36 100 30 Q146 36 140 92 L132 66 Q120 52 100 52 Q80 52 68 66 Z" fill="#9461b8" stroke="#6c3f8c" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M68 66 Q84 58 100 60 L92 78 Q80 72 74 80 Z" fill="#a878cc"/>
+      <path d="M132 66 Q116 58 100 60 L108 78 Q120 72 126 80 Z" fill="#a878cc"/>
+      <path d="M70 44 Q100 30 130 44 L126 54 Q100 42 74 54 Z" fill="#b98ad8" opacity="0.8"/>
+      <!-- заколка-звезда -->
+      <polygon points="140,70 143,78 151,78 145,83 147,91 140,86 133,91 135,83 129,78 137,78" fill="#ffd23f" stroke="#c9a227" stroke-width="1"/>
+      <!-- брови -->
+      <path d="M76 88 Q84 84 91 87" stroke="#5c3a72" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M109 87 Q116 84 124 88" stroke="#5c3a72" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- глаза -->
+      <ellipse cx="84" cy="102" rx="10" ry="12.5" fill="#fff"/>
+      <ellipse cx="116" cy="102" rx="10" ry="12.5" fill="#fff"/>
+      <circle cx="85" cy="103" r="7.2" fill="#37bf8a"/>
+      <circle cx="115" cy="103" r="7.2" fill="#37bf8a"/>
+      <circle cx="85" cy="104" r="3.4" fill="#12251d"/>
+      <circle cx="115" cy="104" r="3.4" fill="#12251d"/>
+      <circle cx="82" cy="99" r="2.4" fill="#fff"/>
+      <circle cx="112" cy="99" r="2.4" fill="#fff"/>
+      <path d="M74 93 Q84 87 94 93" stroke="#3a2547" stroke-width="2.6" fill="none"/>
+      <path d="M106 93 Q116 87 126 93" stroke="#3a2547" stroke-width="2.6" fill="none"/>
+      <!-- ресницы -->
+      <path d="M74 95 l-3 -3 M126 95 l3 -3" stroke="#3a2547" stroke-width="2" stroke-linecap="round"/>
+      <!-- нос, улыбка -->
+      <path d="M100 110 l-2 7 h4" stroke="#e0a878" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M93 126 Q100 132 107 126" stroke="#c65b7c" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M96 128 Q100 131 104 128" fill="#e07a9b" opacity="0.7"/>
+      <!-- румянец -->
+      <ellipse cx="77" cy="116" rx="7" ry="3.6" fill="#f09aa8" opacity="0.5"/>
+      <ellipse cx="123" cy="116" rx="7" ry="3.6" fill="#f09aa8" opacity="0.5"/>
+    </svg>`;
+  }
+
+  /* ---------- Папка с делом (фрагмент SVG для вставки в сцену комнаты) ---------- */
+  function svgFolder(color, dark, label, emblem) {
+    return `
+    <g filter="url(#folderShadow)">
+        <!-- корешок и клапан -->
+        <path d="M14 30 Q14 14 30 14 L96 14 L112 34 L210 34 Q226 34 226 50 L226 276 Q226 292 210 292 L30 292 Q14 292 14 276 Z"
+              fill="${color}" stroke="${dark}" stroke-width="5"/>
+        <path d="M14 60 L226 60" stroke="${dark}" stroke-width="3" opacity="0.6"/>
+        <!-- листы, торчащие из папки -->
+        <rect x="34" y="20" width="170" height="24" rx="3" fill="#f4ecd8" stroke="#c9bf9f" stroke-width="2"/>
+        <rect x="42" y="12" width="150" height="22" rx="3" fill="#fbf6e8" stroke="#c9bf9f" stroke-width="2"/>
+        <!-- эмблема управления мехов -->
+        <circle cx="120" cy="140" r="52" fill="none" stroke="${dark}" stroke-width="5"/>
+        <path d="M96 128 L120 108 L144 128 L144 158 L120 178 L96 158 Z" fill="${dark}"/>
+        <path d="M108 136 L120 126 L132 136 L132 152 L120 162 L108 152 Z" fill="${color}"/>
+        <text x="120" y="212" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="20" fill="${dark}">${emblem}</text>
+        <!-- подпись дела -->
+        <rect x="34" y="234" width="172" height="40" rx="6" fill="#f4ecd8" stroke="${dark}" stroke-width="3"/>
+        <text x="120" y="251" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="13" fill="#3a3226">ЛИЧНОЕ ДЕЛО</text>
+        <text x="120" y="267" text-anchor="middle" font-family="Arial" font-size="12" fill="#6b5f45">${label}</text>
+      </g>`;
+  }
+
+  /* ---------- Папка, «лежащая» на столе: лёгкий перспективный наклон ---------- */
+  function svgFolderOnDesk(color, dark, label, emblem) {
+    return `
+    <g transform="scale(1 0.8)">
+      ${svgFolder(color, dark, label, emblem)}
+    </g>`;
+  }
+
+  window.PILOT_ROOM = { svgPilotM, svgPilotF, svgFolder, svgFolderOnDesk };
+})();
+
+</script>
+
+<script>
+/* =========================================================
+   arena.js — Тренировочный ангар: бой вашего меха с 3 мехами-противниками
+   Противники: лёгкая / средняя / тяжёлая броня (пиксельные силуэты)
+   Механика: ходы, прицеливание по частям, урон по слотам, разоружение,
+   уничтожение деталей и оружия, победа — когда все противники обездвижены.
+   ========================================================= */
+(function () {
+  const PD = window.PART_DATA;
+  const { TIERS, SLOTS, PARTS, WEAPONS, WEAPON_SLOTS, SVG_DRAW, svgWeapon } = PD;
+
+  /* ---------- Генератор пиксельного меха для арены ---------- */
+  // Возвращает <g transform="translate(tx,ty) scale(sc)"> ... </g>
+  function mechGroup(tierIds, weaponsCfg, tx, ty, sc, opts) {
+    opts = opts || {};
+    const parts = {};
+    for (const s of SLOTS) {
+      const t = tierIds[s.id];
+      if (!t || !PARTS[s.id][t]) continue;
+      let inner = SVG_DRAW[s.id](t);
+      if (opts.destroyed && opts.destroyed.includes(s.id)) {
+        // деталь уничтожена — рисуем обгоревший «огрызок»
+        inner = `<g opacity="0.5" filter="url(#wreckFilter)">` + inner +
+          `</g><rect x="${opts.wreckX || 180}" y="${opts.wreckY || 200}" width="0" height="0"/>`;
+      }
+      parts[s.id] = inner;
+    }
+    let wsvg = "";
+    for (const ws of WEAPON_SLOTS) {
+      const t = weaponsCfg[ws.id];
+      if (!t) continue;
+      if (opts.destroyed && opts.destroyed.includes(ws.id)) continue; // оружие сбито
+      wsvg += svgWeapon(ws.id, t);
+    }
+    const hpBar = opts.hpBar || "";
+    const nameTag = opts.nameTag || "";
+    const selRing = opts.selected ? `<rect x="-6" y="-16" width="412" height="536" fill="none" stroke="#ffdd6e" stroke-width="6" stroke-dasharray="14 10"/>` : "";
+    return `<g class="arena-mech" transform="translate(${tx} ${ty}) scale(${sc})">
+      ${selRing}
+      <g ${opts.dim ? 'opacity="0.55"' : ""}>
+        ${parts.weaponBack || ""}
+        ${parts.legs || '<g></g>'}
+        ${parts.armL || '<g></g>'}
+        ${parts.armR || '<g></g>'}
+        ${parts.body || '<g></g>'}
+        ${parts.head || '<g></g>'}
+        ${wsvg}
+      </g>
+      ${hpBar}${nameTag}
+    </g>`;
+  }
+
+  /* ---------- Простой пиксельный силуэт вражеского меха ---------- */
+  // Строим «квадратиками» по сетке 6px, цвет по классу брони.
+  function silhouette(cfg, opts) {
+    opts = opts || {};
+    const P = 6;
+    const px = (x, y, w, h, c, o) =>
+      `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"${o ? ` opacity="${o}"` : ""}/>`;
+    const m = cfg.main, d = cfg.dark, a = cfg.accent, j = cfg.joint;
+    const destroyed = opts.destroyed || [];
+    const dim = (part) => destroyed.includes(part) ? 0.25 : 1;
+    let s = "";
+    // тень
+    s += `<ellipse cx="200" cy="512" rx="${90 * cfg.bulk}" ry="10" fill="#000" opacity="0.35"/>`;
+    // ноги
+    const legW = 26 * cfg.bulk, hipY = 330, footY = 496;
+    [[150, "legs"], [250 - legW + 40, "legs"]].forEach(([lx]) => {
+      s += px(lx, hipY, legW, 70, d, dim("legs"));
+      s += px(lx - 4, hipY + 66, legW + 8, 46, m, dim("legs"));
+      s += px(lx - 6, footY - 18, legW + 12, 18, j, dim("legs"));
+      s += px(lx - 8, footY, legW + 16, 10, "#151a24", dim("legs"));
+    });
+    // таз
+    s += px(146, hipY - 26, 108, 30, j, dim("legs"));
+    // торс
+    const bw = 96 * cfg.bulk;
+    s += px(200 - bw / 2, 190, bw, 118, m, dim("body"));
+    s += px(200 - bw / 2 + 8, 200, bw - 16, 12, a, dim("body") * 0.8);
+    s += px(200 - bw / 2, 258, bw, 10, d, dim("body"));
+    // кабина пилота (иллюминатор)
+    s += px(186, 224, 28, 20, "#0d1420", dim("body"));
+    s += px(190, 228, 20, 12, "#7de3ff", dim("body") * 0.9);
+    // плечи
+    const shW = 34 * cfg.bulk;
+    s += px(200 - bw / 2 - shW + 6, 186, shW, 34, d, dim("armL"));
+    s += px(200 + bw / 2 - 6, 186, shW, 34, d, dim("armR"));
+    // руки
+    s += px(200 - bw / 2 - shW + 12, 218, 20 * cfg.bulk, 74, m, dim("armL"));
+    s += px(200 + bw / 2 - 6 - 4, 218, 20 * cfg.bulk, 74, m, dim("armR"));
+    // кисти
+    s += px(200 - bw / 2 - shW + 12, 290, 20 * cfg.bulk, 16, j, dim("armL"));
+    s += px(200 + bw / 2 - 8, 290, 20 * cfg.bulk, 16, j, dim("armR"));
+    // оружие в руках (упрощённые стволы)
+    if (!destroyed.includes("weaponR")) {
+      s += px(200 + bw / 2 + 10, 288, 46 * cfg.weapons, 12, "#39465c");
+      s += px(200 + bw / 2 + 52 * cfg.weapons, 290, 10, 8, a);
+    } else {
+      s += px(200 + bw / 2 + 10, 288, 12, 12, "#3a3226", 0.5);
+    }
+    if (!destroyed.includes("weaponL")) {
+      s += px(200 - bw / 2 - shW - 40 * cfg.weapons + 8, 288, 46 * cfg.weapons, 12, "#39465c");
+      s += px(200 - bw / 2 - shW - 40 * cfg.weapons + 14, 290, 10, 8, a);
+    } else {
+      s += px(200 - bw / 2 - shW - 4, 288, 12, 12, "#3a3226", 0.5);
+    }
+    // ранец на спине
+    if (!destroyed.includes("weaponBack")) {
+      s += px(200 - 30 * cfg.bulk, 150, 60 * cfg.bulk, 40, d, 0.9);
+      s += px(200 - 20 * cfg.bulk, 140, 8, 12, "#39465c");
+      s += px(200 + 12 * cfg.bulk, 140, 8, 12, "#39465c");
+    }
+    // голова
+    const hw = 30 * cfg.bulk;
+    s += px(200 - hw / 2, 148, hw, 30, m, dim("head"));
+    s += px(200 - hw / 2 + 4, 158, hw - 8, 8, cfg.visor, dim("head")); // визор
+    // V-гребень
+    s += `<polygon points="${200 - hw / 2},148 ${200},${126} ${200 + hw / 2},148" fill="${a}" opacity="${dim("head")}"/>`;
+    // искры у разрушенных деталей
+    destroyed.forEach((id) => {
+      const pos = { head: [200, 140], body: [200, 240], armR: [300, 250], armL: [100, 250], legs: [200, 420],
+                    weaponR: [320, 290], weaponL: [80, 290], weaponBack: [200, 150] }[id] || [200, 250];
+      s += `<text x="${pos[0]}" y="${pos[1]}" font-size="26" text-anchor="middle">💥</text>`;
+    });
+    return s;
+  }
+
+  /* ---------- Конфиги трёх мехов-противников ---------- */
+  const FOES_CFG = [
+    {
+      id: "scout", name: "MX-1 «Разведчик»", cls: "🟦 ЛЁГКАЯ броня", pilot: "ИИ-пилот «Стриж»",
+      bulk: 0.75, weapons: 0.8,
+      main: "#6fd8ff", dark: "#2f8fb8", accent: "#dffaff", joint: "#1f5f7d", visor: "#ffe066",
+      tierIds: { head: "light", armR: "light", armL: "light", body: "light", legs: "light" },
+      weaponsCfg: { weaponR: "light", weaponL: null, weaponBack: "light" },
+      color: "#4dd2ff",
+    },
+    {
+      id: "line", name: "MH-4 «Линия фронта»", cls: "🟨 СРЕДНЯЯ броня", pilot: "ИИ-пилот «Барс»",
+      bulk: 1.0, weapons: 1.0,
+      main: "#ffb347", dark: "#b06a1e", accent: "#fff1d6", joint: "#7a4a12", visor: "#ff5c5c",
+      tierIds: { head: "medium", armR: "medium", armL: "medium", body: "medium", legs: "medium" },
+      weaponsCfg: { weaponR: "medium", weaponL: "medium", weaponBack: null },
+      color: "#ffb347",
+    },
+    {
+      id: "siege", name: "HT-9 «Осадная крепость»", cls: "🟥 ТЯЖЁЛАЯ броня", pilot: "ИИ-пилот «Мамонт»",
+      bulk: 1.35, weapons: 1.25,
+      main: "#ff6b6b", dark: "#8f2020", accent: "#ffd9d0", joint: "#5c1414", visor: "#7dff9e",
+      tierIds: { head: "heavy", armR: "heavy", armL: "heavy", body: "heavy", legs: "heavy" },
+      weaponsCfg: { weaponR: "heavy", weaponL: null, weaponBack: "heavy" },
+      color: "#ff5c5c",
+    },
+  ];
+
+  // Слоты, по которым можно прицелиться на арене
+  const TARGET_SLOTS = ["head", "body", "armR", "armL", "legs", "weaponR", "weaponL", "weaponBack"];
+  const SLOT_NAMES = {
+    head: "Голова", body: "Тело (кабина)", armR: "Правая рука", armL: "Левая рука",
+    legs: "Ноги", weaponR: "Оружие справа", weaponL: "Оружие слева", weaponBack: "Ранец (спина)",
+  };
+
+  /* ---------- Создание объектов противников ---------- */
+  function makeFoes() {
+    return FOES_CFG.map((cfg, i) => {
+      const slots = {};
+      let hpMax = 0, dps = 0, weight = 0, spdSum = 0;
+      for (const s of SLOTS) {
+        const part = PARTS[s.id][cfg.tierIds[s.id]];
+        slots[s.id] = { hp: part.stats.hp, hpMax: part.stats.hp, alive: true };
+        hpMax += part.stats.hp;
+        weight += part.stats.weight;
+        spdSum += part.stats.spd;
+      }
+      const weapons = {};
+      for (const ws of WEAPON_SLOTS) {
+        const t = cfg.weaponsCfg[ws.id];
+        if (!t) { weapons[ws.id] = null; continue; }
+        const wp = WEAPONS[ws.id][t];
+        const whp = Math.max(10, Math.round(wp.stats.dmg * 2));
+        weapons[ws.id] = { tier: t, hp: whp, hpMax: whp, alive: true };
+        hpMax += whp;
+        weight += wp.stats.weight;
+        dps += Math.round(wp.stats.dmg * wp.stats.rate);
+      }
+      return {
+        ...cfg, idx: i, slots, weapons,
+        hp: hpMax, hpMax, dps, weight,
+        spd: Math.round(spdSum / SLOTS.length),
+        destroyed: [], // список уничтоженных слотов (для графики)
+        disabled: false, // обездвижен (ноги или тело уничтожены)
+        wrecked: false,  // полностью уничтожен
+      };
+    });
+  }
+
+  /* ---------- Экспорт состояния игры из app.js ---------- */
+  function playerStats() {
+    const st = window.ARENA_GET_STATE ? window.ARENA_GET_STATE() : null;
+    if (!st) return null;
+    let hpMax = 0, dps = 0, weight = 0, spdSum = 0;
+    const slots = {};
+    for (const s of SLOTS) {
+      const part = PARTS[s.id][st.equipped[s.id]];
+      slots[s.id] = { hp: part.stats.hp, hpMax: part.stats.hp, alive: true, label: part.label };
+      hpMax += part.stats.hp;
+      weight += part.stats.weight;
+      spdSum += part.stats.spd;
+    }
+    const weapons = {};
+    for (const ws of WEAPON_SLOTS) {
+      const t = st.weapons[ws.id];
+      if (!t) { weapons[ws.id] = null; continue; }
+      const wp = WEAPONS[ws.id][t];
+      const whp = Math.max(10, Math.round(wp.stats.dmg * 2));
+      weapons[ws.id] = { tier: t, hp: whp, hpMax: whp, alive: true, label: wp.label, dmg: wp.stats.dmg, rate: wp.stats.rate };
+      hpMax += whp;
+      weight += wp.stats.weight;
+      dps += Math.round(wp.stats.dmg * wp.stats.rate);
+    }
+    const spd = Math.round(spdSum / SLOTS.length);
+    const effSpd = Math.max(1, Math.round((spd - Math.floor(weight / 25)) * 10) / 10);
+    return { equipped: st.equipped, weapons: st.weapons, slots, weaponsMap: weapons, hp: hpMax, hpMax, dps, weight, spd: effSpd };
+  }
+
+  /* ================= UI АРЕНЫ ================= */
+  const el = (id) => document.getElementById(id);
+  let foes = [];
+  let player = null;
+  let turn = null;           // "player" | foe object | null(конец)
+  let aimSlot = "body";      // куда целится игрок
+  let logLines = [];
+  let busy = false;
+  let resultShown = false;
+
+  function addLog(txt, cls) {
+    logLines.unshift({ txt, cls: cls || "" });
+    if (logLines.length > 40) logLines.pop();
+    el("battleLog").innerHTML = logLines
+      .map((l) => `<div class="blog-line ${l.cls}">${l.txt}</div>`).join("");
+  }
+
+  function hpBarHtml(cur, max, color, w) {
+    const pct = Math.max(0, Math.round((cur / max) * 100));
+    return `<div class="mini-hp" style="width:${w || 120}px"><i style="width:${pct}%;background:${color}"></i></div>`;
+  }
+
+  /* ---------- Отрисовка сцены боя ---------- */
+  function renderScene() {
+    const scene = el("battleSvg");
+    const bg = window.HANGAR_DECOR && window.HANGAR_DECOR.backLayer ? window.HANGAR_DECOR.backLayer() : "";
+    const fg = window.HANGAR_DECOR && window.HANGAR_DECOR.frontLayer ? window.HANGAR_DECOR.frontLayer() : "";
+    let s = `<rect x="-10" y="-10" width="420" height="540" fill="#1c2331"/>` + bg;
+
+    // ваш мех слева (реальная сборка)
+    const pDead = Object.keys(player.slots).filter((k) => player.slots[k] && !player.slots[k].alive)
+      .concat(Object.keys(player.weaponsMap).filter((k) => player.weaponsMap[k] && !player.weaponsMap[k].alive));
+    s += `<g transform="scale(0.62)">` +
+      mechGroup(player.equipped, player.weapons, 0, 0, 1, { destroyed: pDead }) + `</g>`;
+    s += `<text x="12" y="26" font-size="15" fill="#7de3ff" font-family="monospace" font-weight="bold">🤖 ВЫ</text>`;
+    // противники справа (силуэты, уменьшенные)
+    foes.forEach((f, i) => {
+      const tx = 210 + i * 62;
+      const ty = 150 - i * 14;
+      const sc = 0.5 - i * 0.04;
+      const isTurn = turn && turn.idx === f.idx;
+      s += `<g transform="translate(${tx} ${ty}) scale(${sc})" opacity="${f.wrecked ? 0.35 : 1}">` +
+        `<rect x="-10" y="-40" width="420" height="560" fill="none"/>` +
+        silhouette(f, { destroyed: f.destroyed }) +
+        (isTurn ? `<rect x="60" y="110" width="280" height="420" fill="none" stroke="#ffdd6e" stroke-width="8" stroke-dasharray="16 12"/>` : "") +
+        `</g>`;
+    });
+    // передний декор полигона (ящики, бочки, конусы — внизу сцены)
+    s += `<g opacity="0.9">${fg}</g>`;
+    scene.innerHTML = s;
+
+    // карточки участников сверху
+    renderCards();
+    renderAimPicker();
+    renderTargetInfo();
+  }
+
+  function renderCards() {
+    const wrap = el("fighterCards");
+    let s = `
+      <div class="fcard player ${turn === "player" ? "active" : ""}">
+        <div class="fcard-name">🤖 Ваш мех</div>
+        <div class="fcard-sub">❤️ ${player.hp}/${player.hpMax} • 🔫 DPS ${player.dps} • ⚡ ${player.spd}</div>
+        ${hpBarHtml(player.hp, player.hpMax, "#4dd2ff", 150)}
+      </div>`;
+    foes.forEach((f) => {
+      s += `
+      <div class="fcard foe ${turn && turn.idx === f.idx ? "active" : ""} ${f.disabled ? "disabled" : ""}" data-foe="${f.idx}">
+        <div class="fcard-name" style="color:${f.color}">${f.wrecked ? "☠ " : ""}${f.name}</div>
+        <div class="fcard-sub">${f.cls} • ❤️ ${Math.max(0, f.hp)}/${f.hpMax}</div>
+        ${hpBarHtml(Math.max(0, f.hp), f.hpMax, f.color, 120)}
+      </div>`;
+    });
+    wrap.innerHTML = s;
+  }
+
+  function renderAimPicker() {
+    const wrap = el("aimPicker");
+    wrap.innerHTML = TARGET_SLOTS.map((sid) => {
+      const on = aimSlot === sid;
+      return `<button class="aim-btn ${on ? "on" : ""}" data-aim="${sid}">${SLOT_NAMES[sid]}</button>`;
+    }).join("");
+    wrap.querySelectorAll(".aim-btn").forEach((b) =>
+      b.addEventListener("click", () => { aimSlot = b.dataset.aim; renderAimPicker(); renderTargetInfo(); }));
+  }
+
+  function currentTarget() {
+    // цель = первый живой (не уничтоженный) противник; обездвиженные тоже цели (достреливать)
+    return foes.find((f) => !f.wrecked) || null;
+  }
+
+  function renderTargetInfo() {
+    const box = el("targetInfo");
+    const tgt = currentTarget();
+    if (!tgt) { box.innerHTML = "<i>Целей нет — полигон пуст 🏁</i>"; return; }
+    const slot = aimSlot.startsWith("weapon") ? tgt.weapons[aimSlot] : tgt.slots[aimSlot];
+    let row;
+    if (!slot) {
+      row = `Слот: <b>${SLOT_NAMES[aimSlot]}</b> — отсутствует у этой цели`;
+    } else if (!slot.alive) {
+      row = `Слот: <b>${SLOT_NAMES[aimSlot]}</b> — УНИЧТОЖЕН 💥`;
+    } else {
+      row = `Слот: <b>${SLOT_NAMES[aimSlot]}</b> — HP ${slot.hp}/${slot.hpMax} ${hpBarHtml(Math.max(0, slot.hp), slot.hpMax, tgt.color, 100)}`;
+    }
+    box.innerHTML = `
+      <div class="ti-title">🎯 Цель: <b style="color:${tgt.color}">${tgt.name}</b>${tgt.disabled ? " (обездвижен)" : ""}</div>
+      <div class="ti-row">${row}</div>
+      <div class="ti-row">Вооружение: ${weaponsList(tgt)}</div>`;
+  }
+
+  function weaponsList(f) {
+    const arr = [];
+    for (const ws of WEAPON_SLOTS) {
+      const w = f.weapons[ws.id];
+      if (!w) continue;
+      arr.push(`${TIERS[w.tier].icon} ${WEAPONS[ws.id][w.tier].label} ${w.alive ? "" : "(сбито) 💥"}`);
+    }
+    return arr.length ? arr.join(", ") : "без оружия";
+  }
+
+  /* ---------- Боевая математика ---------- */
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  function weaponPower(owner) {
+    // суммарный DPS всего живого оружия (без оружия — «кулаки»)
+    const map = owner === player ? player.weaponsMap : owner.weapons;
+    let dps = 0;
+    for (const k of Object.keys(map)) {
+      const w = map[k];
+      if (!w || w.alive === false) continue;
+      if (owner === player) dps += w.dmg * w.rate;
+      else dps += WEAPONS[k][w.tier].stats.dmg * WEAPONS[k][w.tier].stats.rate;
+    }
+    return dps > 0 ? dps : 2; // кулаки
+  }
+
+  function shotOnce(attackerIsPlayer, atkr, dfnd, aimId) {
+    // при вызове for-player передаём объект игрока (player), иначе — врага
+    const dps = weaponPower(atkr);
+    const baseDmg = Math.max(1, Math.round(dps / 2.5));
+    let dmg = Math.max(1, Math.round(baseDmg * rand(0.75, 1.3)));
+    // шанс попадания зависит от скорости защитника
+    const acc = Math.max(0.45, Math.min(0.95, 0.85 - dfnd.spd * 0.012));
+    if (Math.random() > acc) return { dmg: 0, miss: true };
+    return { dmg };
+  }
+
+  function applyDamage(def, isPlayer, aimId, dmg) {
+    const slots = isPlayer ? def.slots : def.slots;
+    const wmap = isPlayer ? def.weaponsMap : def.weapons;
+    let target = null, kind = "part";
+    if (aimId.startsWith("weapon")) {
+      const w = wmap[aimId];
+      if (!w || !w.alive) return { blocked: true };
+      target = w; kind = "weapon";
+    } else {
+      const sp = slots[aimId];
+      if (!sp || !sp.alive) return { blocked: true };
+      target = sp;
+    }
+    target.hp -= dmg;
+    def.hp -= dmg;
+    let broke = false;
+    if (target.hp <= 0) {
+      target.hp = 0;
+      if (target.alive !== undefined) target.alive = false;
+      broke = true;
+      if (!isPlayer) {
+        def.destroyed.push(aimId);
+      } else {
+        // у игрока тоже помечаем (для затемнения)
+        def._destroyed = def._destroyed || [];
+        def._destroyed.push(aimId);
+      }
+    }
+    return { broke, kind };
+  }
+
+  function checkDefeated(def, isPlayer) {
+    const legsOk = def.slots.legs.alive;
+    const bodyOk = def.slots.body.alive;
+    const headOk = def.slots.head.alive;
+    if (!bodyOk) { def.wrecked = true; def.disabled = true; return "УНИЧТОЖЕН — кабина пробита ☠"; }
+    if (!isPlayer && !headOk) { def.wrecked = true; def.disabled = true; return "УНИЧТОЖЕН — голова снесена ☠"; }
+    if (!legsOk && !def.disabled) { def.disabled = true; return "обездвижен (ноги сбиты) 🦿"; }
+    return null;
+  }
+
+  /* ---------- Ходы ---------- */
+  async function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  async function playerFire() {
+    const tgt = currentTarget();
+    if (!tgt) return endBattle(true);
+    const shots = Math.max(1, Math.min(3, countPlayerWeapons()));
+    for (let i = 0; i < shots; i++) {
+      const res = shotOnce(true, player, tgt, aimSlot);
+      if (res.miss) {
+        addLog(`💨 Ваш мех промахнулся по ${tgt.name} (${SLOT_NAMES[aimSlot]})`, "");
+      } else {
+        const ap = applyDamage(tgt, false, aimSlot, res.dmg);
+        if (ap.blocked) {
+          addLog(`⛔ ${SLOT_NAMES[aimSlot]} у ${tgt.name} уже уничтожена — перенос удара на корпус`, "warn");
+          applyDamage(tgt, false, "body", res.dmg);
+          tgt.destroyed.includes("body") || (tgt.slots.body.alive = tgt.slots.body.alive);
+        } else {
+          addLog(`🔫 Ваш мех → ${tgt.name}: ${SLOT_NAMES[aimSlot]} −${res.dmg}` + (ap.broke ? " 💥 РАЗРУШЕНО!" : ""), ap.broke ? "crit" : "good");
+        }
+        const msg = checkDefeated(tgt, false);
+        if (msg) addLog(`🏳️ ${tgt.name}: ${msg}`, "warn");
+      }
+      renderScene();
+      await sleep(260);
+    }
+    if (foes.every((f) => f.wrecked)) return endBattle(true);
+    await foesTurn();
+  }
+
+  function countPlayerWeapons() {
+    return Object.values(player.weaponsMap).filter((w) => w && w.alive).length || 1;
+  }
+
+  async function foesTurn() {
+    for (const f of foes) {
+      if (f.wrecked) continue;
+      if (f.disabled) { addLog(`😵 ${f.name} обездвижен и не отвечает`, ""); continue; }
+      turn = f; renderCards();
+      await sleep(300);
+      // ИИ выбирает случайный живой слот игрока (часто — ноги или оружие)
+      const options = TARGET_SLOTS.filter((sid) => {
+        if (sid.startsWith("weapon")) return player.weaponsMap[sid] && player.weaponsMap[sid].alive;
+        return player.slots[sid] && player.slots[sid].alive;
+      });
+      const weights = options.map((sid) => (sid === "legs" || sid.startsWith("weapon")) ? 3 : 1);
+      let pickIdx = weightedPick(options, weights);
+      const aim = options[pickIdx];
+      const nShots = Math.max(1, Math.min(3, Object.values(f.weapons).filter((w) => w && w.alive).length));
+      for (let i = 0; i < nShots; i++) {
+        const res = shotOnce(false, f, player, aim);
+        if (res.miss) {
+          addLog(`💨 ${f.name} промахнулся по вам`, "");
+        } else {
+          const ap = applyDamage(player, true, aim, res.dmg);
+          if (ap.blocked) {
+            addLog(`⛔ Ваш слот ${SLOT_NAMES[aim]} уже уничтожен — удар по корпусу`, "warn");
+            applyDamage(player, true, "body", res.dmg);
+          } else {
+            addLog(`👾 ${f.name} → ваш мех: ${SLOT_NAMES[aim]} −${res.dmg}` + (ap.broke ? " 💥 ПОТЕРЯНО!" : ""), ap.broke ? "bad" : "");
+          }
+          const msg = checkDefeated(player, true);
+          if (msg) { addLog(`🚨 Ваш мех: ${msg}`, "bad"); renderScene(); return endBattle(false); }
+        }
+        renderScene();
+        await sleep(240);
+      }
+    }
+    if (player.hp <= 0) return endBattle(false);
+    turn = "player";
+    renderScene();
+  }
+
+  function weightedPick(arr, w) {
+    const total = w.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return i; }
+    return arr.length - 1;
+  }
+
+  function endBattle(win) {
+    turn = null; busy = false;
+    const res = el("battleResult");
+    res.hidden = false;
+    res.className = "battle-result " + (win ? "win" : "lose");
+    res.textContent = win
+      ? "🏆 ПОБЕДА! Все три учебных меха уничтожены."
+      : "💥 ПОРАЖЕНИЕ. Кабина вашего меха пробита. Вернитесь в ангар и усильте броню!";
+    addLog(win ? "🏆 Учения завершены: ПОБЕДА" : "💥 Учения завершены: ПОРАЖЕНИЕ", win ? "good" : "bad");
+    el("btnAttack").disabled = true;
+    el("btnReset").disabled = false;
+    renderScene();
+  }
+
+  /* ---------- Старт / сброс ---------- */
+  function startBattle() {
+    player = playerStats();
+    if (!player) { addLog("Не удалось получить данные сборки меха.", "bad"); return; }
+    foes = makeFoes();
+    logLines = [];
+    aimSlot = "body";
+    turn = "player";
+    busy = false;
+    resultShown = false;
+    el("battleResult").hidden = true;
+    el("btnAttack").disabled = false;
+    el("btnReset").disabled = false;
+    addLog("📣 Учебная тревога! Три учебных меха выходят на полигон. Ваш ход — выберите цель и стреляйте!", "good");
+    foes.forEach((f) => addLog(`👾 ${f.name} — ${f.cls}, DPS ${f.dps}, вес ${f.weight} кг`, ""));
+    renderScene();
+  }
+
+  /* ---------- Кнопки ---------- */
+  function bindButtons() {
+    el("btnAttack").addEventListener("click", async () => {
+      if (busy || turn !== "player") return;
+      busy = true;
+      el("btnAttack").disabled = true;
+      await playerFire();
+      busy = false;
+      if (turn === "player") el("btnAttack").disabled = false;
+    });
+    el("btnReset").addEventListener("click", () => startBattle());
+  }
+
+  /* ---------- Попадание decor-слоя для фона арены ---------- */
+  // (backLayer/frontLayer экспортируются в decor.js)
+
+  /* ---------- Глобальный API для app.js ---------- */
+  window.ARENA = {
+    init() {
+      bindButtons();
+    },
+    enter() {
+      startBattle();
+    },
+    leave() {
+      // ничего special — экран скрывает app.js
+    },
+  };
+
+  // Авто-экспорт функций рисования наружу (для единого HTML-файла)
+  window.ARENA_INTERNAL = { mechGroup, silhouette, FOES_CFG };
+})();
+
+</script>
+
+<script>
+/* app.js — логика ангара: выбор слотов (детали + оружие), замена, подсчёт характеристик */
+
+// Работает и как отдельный файл (window.PART_DATA), и внутри единого HTML-файла (PART_DATA)
+
+const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon, svgCockpitZoom } = window.PART_DATA;
+
+// Текущая сборка меха (по умолчанию — средний комплект)
+let equipped = {
+  head: "medium",
+  armR: "medium",
+  armL: "medium",
+  body: "medium",
+  legs: "medium",
+};
+
+// Экипированное оружие (null — слот пуст)
+let weapons = {
+  weaponR: "medium",
+  weaponL: null,
+  weaponBack: null,
+};
+
+let selectedSlot = null; // может быть id детали или id оружия
+
+/* ---------- Отрисовка робота ---------- */
+function renderRobot() {
+  for (const slot of SLOTS) {
+    const g = document.getElementById("part-" + slot.id);
+    g.innerHTML = SVG_DRAW[slot.id](equipped[slot.id]);
+    g.classList.toggle("selected", selectedSlot === slot.id);
+  }
+  for (const wslot of WEAPON_SLOTS) {
+    const g = document.getElementById("part-" + wslot.id);
+    g.innerHTML = weapons[wslot.id] ? svgWeapon(wslot.id, weapons[wslot.id]) : "";
+    g.classList.toggle("selected", selectedSlot === wslot.id);
+  }
+}
+
+/* ---------- Итоговые характеристики ---------- */
+function computeTotals() {
+  const totals = { str: 0, spd: 0, cap: 0, weight: 0, hp: 0 };
+  for (const slot of SLOTS) {
+    const st = PARTS[slot.id][equipped[slot.id]].stats;
+    totals.str += st.str;
+    totals.cap += st.cap;
+    totals.weight += st.weight;
+    totals.hp += st.hp;
+  }
+  // Вес и DPS оружия
+  totals.dps = 0;
+  totals.weaponCount = 0;
+  for (const wslot of WEAPON_SLOTS) {
+    const tierId = weapons[wslot.id];
+    if (!tierId) continue;
+    const st = WEAPONS[wslot.id][tierId].stats;
+    totals.weight += st.weight;
+    totals.dps += Math.round(st.dmg * st.rate);
+    totals.weaponCount++;
+  }
+  // Скорость — средняя по деталям
+  const speeds = SLOTS.map((s) => PARTS[s.id][equipped[s.id]].stats.spd);
+  totals.spd = Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length * 10) / 10;
+
+  // Штраф скорости за перегрузку: тяжёлые детали и оружие замедляют
+  const speedPenalty = Math.floor(totals.weight / 25);
+  totals.effectiveSpd = Math.max(1, Math.round((totals.spd - speedPenalty) * 10) / 10);
+  return totals;
+}
+
+function renderTotals() {
+  const t = computeTotals();
+  const el = document.getElementById("totalStats");
+  el.innerHTML = `
+    <span class="tstat">💪 Сила: <b>${t.str}</b></span>
+    <span class="tstat">⚡ Скорость: <b>${t.effectiveSpd}</b></span>
+    <span class="tstat">📦 Грузоподъёмность: <b>${t.cap} кг</b></span>
+    <span class="tstat">⚖️ Вес: <b>${t.weight} кг</b></span>
+    <span class="tstat">❤️ ХП: <b>${t.hp}</b></span>
+    <span class="tstat">🔫 Урон/сек: <b>${t.dps}</b></span>`;
+}
+
+/* ---------- Список слотов (детали + оружие) ---------- */
+function makeSlotBtn(name, tierLabel, partLabel, tierColor, slotId, empty) {
+  const btn = document.createElement("button");
+  btn.className = "slot-btn" + (selectedSlot === slotId ? " active" : "") + (empty ? " empty" : "");
+  btn.style.setProperty("--tier-color", tierColor || "#5a6b83");
+  btn.innerHTML = `
+    <span class="slot-name">${name}</span>
+    <span class="slot-tier">${tierLabel}</span>
+    <span class="slot-part">${partLabel}</span>`;
+  btn.addEventListener("click", () => selectSlot(slotId));
+  return btn;
+}
+
+function renderSlots() {
+  const list = document.getElementById("slotsList");
+  list.innerHTML = "";
+
+  const h1 = document.createElement("div");
+  h1.className = "slots-header";
+  h1.textContent = "🦾 Детали";
+  list.appendChild(h1);
+  for (const slot of SLOTS) {
+    const tier = equipped[slot.id];
+    const part = PARTS[slot.id][tier];
+    list.appendChild(makeSlotBtn(slot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, part.label, TIERS[tier].color, slot.id, false));
+  }
+
+  const h2 = document.createElement("div");
+  h2.className = "slots-header";
+  h2.textContent = "🔫 Оружие";
+  list.appendChild(h2);
+  for (const wslot of WEAPON_SLOTS) {
+    const tier = weapons[wslot.id];
+    if (tier) {
+      const wp = WEAPONS[wslot.id][tier];
+      list.appendChild(makeSlotBtn(wslot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, wp.label, TIERS[tier].color, wslot.id, false));
+    } else {
+      list.appendChild(makeSlotBtn(wslot.name, "— не установлено", "пусто", null, wslot.id, true));
+    }
+  }
+}
+
+/* ---------- Выбор комплекта для слота (деталь или оружие) ---------- */
+function renderPartPicker(slotName) {
+  const cards = document.getElementById("pickerCards");
+  cards.innerHTML = "";
+  for (const tierId of Object.keys(TIERS)) {
+    const tier = TIERS[tierId];
+    const part = PARTS[selectedSlot][tierId];
+    const isCurrent = equipped[selectedSlot] === tierId;
+    const card = document.createElement("button");
+    card.className = "part-card" + (isCurrent ? " current" : "");
+    card.style.setProperty("--tier-color", tier.color);
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="badge">${tier.icon} ${tier.name}</span>
+        ${isCurrent ? '<span class="installed">✔ стоит</span>' : ""}
+      </div>
+      <div class="card-label">${part.label}</div>
+      <ul class="card-stats">
+        <li>💪 Сила: <b>${part.stats.str}</b></li>
+        <li>⚡ Скорость: <b>${part.stats.spd}</b></li>
+        <li>📦 Грузопод.: <b>${part.stats.cap} кг</b></li>
+        <li>⚖️ Вес: <b>${part.stats.weight} кг</b></li>
+        <li>❤️ ХП: <b>${part.stats.hp}</b></li>
+      </ul>`;
+    card.addEventListener("click", () => {
+      equipped[selectedSlot] = tierId;
+      renderAll();
+    });
+    cards.appendChild(card);
+  }
+}
+
+function renderWeaponPicker() {
+  const cards = document.getElementById("pickerCards");
+  cards.innerHTML = "";
+  for (const tierId of Object.keys(TIERS)) {
+    const tier = TIERS[tierId];
+    const wp = WEAPONS[selectedSlot][tierId];
+    const isCurrent = weapons[selectedSlot] === tierId;
+    const dps = Math.round(wp.stats.dmg * wp.stats.rate);
+    const card = document.createElement("button");
+    card.className = "part-card" + (isCurrent ? " current" : "");
+    card.style.setProperty("--tier-color", tier.color);
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="badge">${tier.icon} ${tier.name}</span>
+        ${isCurrent ? '<span class="installed">✔ стоит</span>' : ""}
+      </div>
+      <div class="card-label">${wp.label}</div>
+      <ul class="card-stats">
+        <li>💥 Урон: <b>${wp.stats.dmg}</b></li>
+        <li>🔁 Скорострельность: <b>${wp.stats.rate}/с</b></li>
+        <li>🎯 DPS: <b>${dps}</b></li>
+        <li>📏 Дальность: <b>${wp.stats.range}</b></li>
+        <li>🔷 Боезапас: <b>${wp.stats.ammo}</b></li>
+        <li>⚡ Энергия: <b>${wp.stats.energy}</b></li>
+        <li>⚖️ Вес: <b>${wp.stats.weight} кг</b></li>
+      </ul>`;
+    card.addEventListener("click", () => {
+      weapons[selectedSlot] = tierId;
+      renderAll();
+    });
+    cards.appendChild(card);
+  }
+  // кнопка снять оружие
+  if (weapons[selectedSlot]) {
+    const off = document.createElement("button");
+    off.className = "part-card remove";
+    off.innerHTML = `<div class="card-label">✖ Снять оружие</div>`;
+    off.addEventListener("click", () => {
+      weapons[selectedSlot] = null;
+      renderAll();
+    });
+    cards.appendChild(off);
+  }
+}
+
+function renderPicker() {
+  const title = document.getElementById("pickerTitle");
+  const cards = document.getElementById("pickerCards");
+  if (!selectedSlot) {
+    title.textContent = "Выберите слот (или деталь/оружие на роботе)";
+    cards.innerHTML = "";
+    return;
+  }
+  const isWeapon = selectedSlot.startsWith("weapon");
+  const slotObj = isWeapon ? WEAPON_SLOTS.find((s) => s.id === selectedSlot)
+                           : SLOTS.find((s) => s.id === selectedSlot);
+  title.textContent = `Замена: ${slotObj.name}`;
+  if (isWeapon) renderWeaponPicker();
+  else renderPartPicker(slotObj.name);
+}
+
+function selectSlot(id) {
+  selectedSlot = id;
+  renderAll();
+}
+
+/* ---------- Клик по деталям на мехе ---------- */
+document.querySelectorAll(".robot-part").forEach((g) => {
+  g.addEventListener("click", () => selectSlot(g.dataset.slot));
+});
+
+/* ---------- Подсказка «кабина пилота» при наведении на тело ---------- */
+const cockpitTip = document.getElementById("cockpitTip");
+const bodyPart = document.getElementById("part-body");
+if (bodyPart && cockpitTip) {
+  cockpitTip.innerHTML = svgCockpitZoom() + '<div class="tip-caption">👨‍✈️ Пилот управляет мехом из кабины в торсе</div>';
+  bodyPart.addEventListener("mouseenter", () => cockpitTip.classList.add("visible"));
+  bodyPart.addEventListener("mouseleave", () => cockpitTip.classList.remove("visible"));
+}
+
+/* ---------- Полный перерендер ---------- */
+function renderAll() {
+  if (window.HANGAR_DECOR) window.HANGAR_DECOR.render(); // пиксельный декор ангара
+  renderRobot();
+  renderSlots();
+  renderPicker();
+  renderTotals();
+}
+
+renderAll();
+
+/* ============================================================
+   КОМНАТА ПИЛОТА: переключение экранов, папки с делами
+   ============================================================ */
+const PR = (typeof window !== 'undefined' && window.PILOT_ROOM) ? window.PILOT_ROOM : null;
+
+const pilotRoomEl = document.getElementById("pilotRoom");
+const hangarWrapEl = document.getElementById("hangarWrap");
+const panelEl = document.querySelector(".panel");
+const screenTitle = document.getElementById("screenTitle");
+const btnHangar = document.getElementById("btnHangar");
+const btnPilotRoom = document.getElementById("btnPilotRoom");
+
+// Данные личных дел пилотов
+const PILOTS = {
+  male: {
+    name: "Артём «Ястреб» Соколов",
+    rank: "⭐ Капитан • Ведущий пилот меха MH-7",
+    photo: PR ? PR.svgPilotM() : "",
+    list: [
+      ["Позывной", "Ястреб"],
+      ["Возраст", "27 лет"],
+      ["Стаж полётов", "6 лет / 412 боевых выходов"],
+      ["Любимый мех", "«Цитадель» — тяжёлый комплект"],
+      ["Навыки", "штурм, работа гаусс-орудия, точность 94%"],
+      ["Характер", "спокойный, любит тактику и шахматы"],
+      ["Достижения", "орден «За оборону Сектора-7», кубок ангарных учений"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-7 «Гроза» • средняя сборка, импульсер «Оса»",
+  },
+  female: {
+    name: "Алиса «Ласточка» Верещагина",
+    rank: "⭐ Лейтенант • Пилот разведывательного меха",
+    photo: PR ? PR.svgPilotF() : "",
+    list: [
+      ["Позывной", "Ласточка"],
+      ["Возраст", "24 года"],
+      ["Стаж полётов", "3 года / 187 боевых выходов"],
+      ["Любимый мех", "«Стриж» — лёгкий скоростной комплект"],
+      ["Навыки", "разведка, уклонение, рейды на высокой скорости"],
+      ["Характер", "весёлая, дерзкая, обожает рисовать на броне"],
+      ["Достижения", "рекорд полигона по скорости, медаль «Быстрая тень»"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-3 «Ветер» • лёгкая сборка, лазер «Игла» + рой дронов",
+  },
+};
+
+const arenaWrapEl = document.getElementById("arenaWrap");
+const btnArena = document.getElementById("btnArena");
+
+function showScreen(which) {
+  const isRoom = which === "room";
+  const isArena = which === "arena";
+  pilotRoomEl.hidden = !isRoom;
+  arenaWrapEl.hidden = !isArena;
+  hangarWrapEl.hidden = isRoom || isArena;
+  if (panelEl) panelEl.style.display = isRoom || isArena ? "none" : "";
+  screenTitle.textContent = isRoom
+    ? "🪑 Комната пилота: рабочий стол и личные дела"
+    : isArena
+      ? "🎯 Тренировочный ангар: боевые учения"
+      : "🏗️ Ангар: Мех-конструктор (с пилотом)";
+  btnHangar.classList.toggle("active", !isRoom && !isArena);
+  btnPilotRoom.classList.toggle("active", isRoom);
+  btnArena.classList.toggle("active", isArena);
+  if (!isRoom && cockpitTip) cockpitTip.classList.remove("visible");
+  closeDossier();
+  if (isArena && window.ARENA) window.ARENA.enter(); // новый бой при входе
+}
+
+btnHangar.addEventListener("click", () => showScreen("hangar"));
+btnPilotRoom.addEventListener("click", () => showScreen("room"));
+btnArena.addEventListener("click", () => showScreen("arena"));
+
+// Передать арене текущую сборку меха
+window.ARENA_GET_STATE = () => ({ equipped, weapons });
+if (window.ARENA) window.ARENA.init();
+
+// Вставляем папки в SVG-сцену комнаты
+if (PR) {
+  document.getElementById("folderMale").innerHTML += PR.svgFolderOnDesk("#2f5fa8", "#1c3a66", "СОКОЛОВ А. • ЯСТРЕБ", "☠ МЕХ-7");
+  document.getElementById("folderFemale").innerHTML += PR.svgFolderOnDesk("#b0487a", "#6e2447", "ВЕРЕЩАГИНА А. • ЛАСТОЧКА", "☠ МЕХ-3");
+}
+
+// Открытие дела по клику на папку
+document.querySelectorAll(".folder").forEach((f) => {
+  f.addEventListener("click", () => openDossier(f.dataset.pilot));
+});
+
+const dossier = document.getElementById("dossier");
+function openDossier(id) {
+  const p = PILOTS[id];
+  if (!p || !PR) return;
+  document.getElementById("dossierPhoto").innerHTML = p.photo;
+  document.getElementById("dossierName").textContent = p.name;
+  document.getElementById("dossierRank").textContent = p.rank;
+  document.getElementById("dossierList").innerHTML = p.list
+    .map(([k, v]) => `<li><span>${k}:</span> <b>${v}</b></li>`)
+    .join("");
+  document.getElementById("dossierMech").textContent = p.mech;
+  dossier.hidden = false;
+  const inner = dossier.querySelector(".dossier-inner");
+  if (inner) {
+    inner.classList.remove("dossier-card-anim");
+    void inner.offsetWidth; // рестарт анимации
+    inner.classList.add("dossier-card-anim");
+  }
+}
+function closeDossier() {
+  if (dossier) dossier.hidden = true;
+}
+document.getElementById("dossierClose").addEventListener("click", closeDossier);
+dossier.addEventListener("click", (e) => { if (!e.target.closest(".dossier-inner")) closeDossier(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDossier(); });
+
+// Кнопка «Комната пилота» прямо из кабины на мехе (по клику на иллюминатор тела)
+const bodyG = document.getElementById("part-body");
+if (bodyG) {
+  const goBtn = document.createElement("button");
+  goBtn.id = "goPilotRoom";
+  goBtn.className = "go-pilot-btn";
+  goBtn.textContent = "🪑 В комнату пилота";
+  goBtn.title = "Открыть рабочий стол пилотов";
+  const wrap = document.getElementById("hangar");
+  if (wrap) wrap.appendChild(goBtn);
+  goBtn.addEventListener("click", () => showScreen("room"));
+}
+
+// Кнопка «Тренировочный ангар» на мехе
+const hangarBox = document.getElementById("hangar");
+if (hangarBox) {
+  const arenaBtn = document.createElement("button");
+  arenaBtn.id = "goArenaBtn";
+  arenaBtn.className = "go-pilot-btn arena-btn";
+  arenaBtn.textContent = "🎯 Тренировочный ангар";
+  arenaBtn.title = "Боевые учения: три учебных меха против вас";
+  arenaBtn.style.left = "auto";
+  arenaBtn.style.right = "12px";
+  hangarBox.appendChild(arenaBtn);
+  arenaBtn.addEventListener("click", () => showScreen("arena"));
+}
+
+// Подсказки на экране ангара — с упоминанием арены
+const hintEl = document.querySelector(".hangar-wrap .hint");
+if (hintEl) hintEl.textContent += " Кнопки внизу: 🪑 комната пилота и 🎯 тренировочный ангар.";
+
+showScreen("hangar");
+
+</script>
+</body>
+</html>
