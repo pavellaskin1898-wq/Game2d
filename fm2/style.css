@@ -55,3 +55,18 @@ canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: bloc
 .result-box p { font-size: 12px; margin-bottom: 16px; color: #cfc9b8; }
 .result-box button { margin: 0 4px; }
 @media (max-width: 900px) { #scr-hangar { flex-direction: column; } }
+
+/* --- Карта города (выбор задания) --- */
+#scr-map { position: relative; }
+.map-wrap { position: relative; }
+#cvm { width: 100%; height: auto; border: 3px solid #3a3f4a; background: #0c0d10; cursor: pointer; }
+#map-info { position: absolute; top: 8px; left: 8px; background: #000000cc; border: 1px solid #5b6068; padding: 4px 8px; font-size: 10px; color: #cfe3ff; max-width: 92%; }
+#map-hint { position: absolute; bottom: 8px; left: 8px; background: #000000bb; border: 1px solid #c9a227; padding: 3px 8px; font-size: 11px; color: #ffd23e; }
+.mission-card { position: absolute; right: 12px; top: 40px; width: 260px; background: #14161cee; border: 3px solid #5b6068; padding: 10px; box-shadow: 0 0 24px #000c; }
+.mission-card.sel { border-color: #ffd23e; }
+.mission-card h3 { color: #ffd23e; font-size: 13px; letter-spacing: 2px; margin-bottom: 6px; text-shadow: 1px 1px 0 #000; }
+.mission-card p { font-size: 10px; line-height: 1.5; color: #cfc9b8; min-height: 84px; margin-bottom: 8px; }
+.mission-card .big { width: 100%; font-size: 13px; padding: 8px; }
+.mission-card.done { opacity: .55; }
+.big.alt { background: #20303d; border-color: #6fa8c9; color: #6fa8c9; }
+.big.alt:hover { background: #2c4257; }

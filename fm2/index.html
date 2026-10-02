@@ -14,6 +14,7 @@
       <canvas id="cv" width="960" height="540"></canvas>
       <div class="hangar-actions">
         <button id="btn-deploy" class="big">▶ DEPLOY TO TRAINING GRID</button>
+        <button id="btn-mission" class="big alt">🗺 CITY MAP — SELECT MISSION</button>
         <span class="hintline">Torso = Body+Head (отдельной головы нет). Вес снижает SPEED, перегруз отключает подъёмы.</span>
       </div>
     </div>
@@ -23,6 +24,21 @@
       <h2>STATUS</h2>
       <div id="status"></div>
     </aside>
+  </section>
+
+  <!-- ============ КАРТА ГОРОДА — ВЫБОР ЗАДАНИЯ ============ -->
+  <section id="scr-map" style="display:none">
+    <div class="map-wrap">
+      <canvas id="cvm" width="960" height="540"></canvas>
+      <div id="map-info">—</div>
+      <div id="map-hint">Клик по метке локации — брифинг задания · Enter/Space — принять бой · Esc — в ангар</div>
+      <div class="mission-card" id="mission-card">
+        <h3 id="mc-title">SELECT MISSION</h3>
+        <p id="mc-desc"></p>
+        <button id="mc-deploy" class="big">▶ DEPLOY</button>
+        <span id="mc-reward" class="hintline"></span>
+      </div>
+    </div>
   </section>
 
   <!-- ================= БОЙ ================= -->
