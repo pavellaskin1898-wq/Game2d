@@ -2,9 +2,9 @@
 
 // Работает и как отдельный файл (window.PART_DATA), и внутри единого HTML-файла (PART_DATA)
 const _PD = (typeof window !== 'undefined' && window.PART_DATA) ? window.PART_DATA : PART_DATA;
-const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon } = _PD;
+const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon, svgCockpitZoom } = _PD;
 
-// Текущая сборка робота (по умолчанию — средний комплект)
+// Текущая сборка меха (по умолчанию — средний комплект)
 let equipped = {
   head: "medium",
   armR: "medium",
@@ -219,10 +219,19 @@ function selectSlot(id) {
   renderAll();
 }
 
-/* ---------- Клик по деталям на роботе ---------- */
+/* ---------- Клик по деталям на мехе ---------- */
 document.querySelectorAll(".robot-part").forEach((g) => {
   g.addEventListener("click", () => selectSlot(g.dataset.slot));
 });
+
+/* ---------- Подсказка «кабина пилота» при наведении на тело ---------- */
+const cockpitTip = document.getElementById("cockpitTip");
+const bodyPart = document.getElementById("part-body");
+if (bodyPart && cockpitTip) {
+  cockpitTip.innerHTML = svgCockpitZoom() + '<div class="tip-caption">👨‍✈️ Пилот управляет мехом из кабины в торсе</div>';
+  bodyPart.addEventListener("mouseenter", () => cockpitTip.classList.add("visible"));
+  bodyPart.addEventListener("mouseleave", () => cockpitTip.classList.remove("visible"));
+}
 
 /* ---------- Полный перерендер ---------- */
 function renderAll() {
