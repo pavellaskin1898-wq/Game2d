@@ -1,6 +1,8 @@
 /* app.js — логика ангара: выбор слотов (детали + оружие), замена, подсчёт характеристик */
 
-const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon } = window.PART_DATA;
+// Работает и как отдельный файл (window.PART_DATA), и внутри единого HTML-файла (PART_DATA)
+const _PD = (typeof window !== 'undefined' && window.PART_DATA) ? window.PART_DATA : PART_DATA;
+const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon } = _PD;
 
 // Текущая сборка робота (по умолчанию — средний комплект)
 let equipped = {

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ангар — Конструктор робота 2D</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<style>
+/* style.css — оформление ангара */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: #10151f;
+  color: #e8edf5;
+  min-height: 100vh;
+}
+
+.app { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.topbar h1 { font-size: 22px; letter-spacing: 0.5px; }
+
+.total-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.tstat {
+  background: #1b2433; border: 1px solid #2e3d55; border-radius: 8px;
+  padding: 6px 10px; font-size: 13px;
+}
+.tstat b { color: #7de3ff; }
+
+.content { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .content { grid-template-columns: 1fr; } }
+
+/* ---------- Ангар ---------- */
+.hangar-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+.hangar {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 520px;
+  background:
+    /* стены ангара */
+    linear-gradient(#243044, #1a2331);
+  border: 1px solid #33455f;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5);
+}
+
+/* пол */
+.hangar::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+  background:
+    repeating-linear-gradient(90deg, #2b3648 0 40px, #26303f 40px 80px);
+  border-top: 3px solid #46586f;
+}
+/* разметка на полу */
+.hangar::before {
+  content: "";
+  position: absolute; left: 15%; right: 15%; bottom: 60px; height: 6px;
+  background: repeating-linear-gradient(90deg, #ffd23f 0 24px, transparent 24px 48px);
+  opacity: 0.6; z-index: 1;
+}
+
+#robotSvg { position: relative; z-index: 2; display: block; }
+
+.robot-part { cursor: pointer; transition: filter 0.15s; }
+.robot-part:hover { filter: brightness(1.25) url(#shadow); }
+.robot-part.selected { animation: pulse 1.2s infinite; }
+@keyframes pulse {
+  0%, 100% { filter: drop-shadow(0 0 2px #ffffff); }
+  50%      { filter: drop-shadow(0 0 10px #7de3ff); }
+}
+
+.hangar-floor-label {
+  position: absolute; top: 10px; left: 12px; z-index: 3;
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa3bf; background: rgba(16,21,31,0.6);
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #33455f;
+}
+
+.hint { font-size: 13px; color: #93a5c1; }
+
+/* ---------- Панель ---------- */
+.panel { display: flex; flex-direction: column; gap: 14px; }
+
+.slots { display: flex; flex-direction: column; gap: 8px; }
+.slots-header {
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa3bf; margin-top: 6px; padding-bottom: 2px; border-bottom: 1px solid #2e3d55;
+}
+.slot-btn {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas:
+    "name tier"
+    "part part";
+  gap: 2px 8px;
+  text-align: left;
+  background: #1b2433;
+  border: 1px solid #2e3d55;
+  border-left: 5px solid var(--tier-color, #4dd2ff);
+  color: #e8edf5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.slot-btn:hover { background: #223047; }
+.slot-btn.active { outline: 2px solid #7de3ff; background: #223047; transform: translateX(3px); }
+.slot-btn.empty { opacity: 0.55; border-left-style: dashed; }
+.slot-name { grid-area: name; font-weight: 600; }
+.slot-tier { grid-area: tier; font-size: 12px; color: var(--tier-color); white-space: nowrap; }
+.slot-part { grid-area: part; font-size: 12px; color: #93a5c1; }
+
+.picker {
+  background: #161e2b; border: 1px solid #2e3d55; border-radius: 12px; padding: 12px;
+}
+.picker-title { font-weight: 600; margin-bottom: 10px; color: #cfe0f5; }
+.picker-cards { display: flex; flex-direction: column; gap: 10px; }
+
+.part-card {
+  text-align: left;
+  background: #1b2433;
+  border: 1px solid #2e3d55;
+  border-top: 4px solid var(--tier-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #e8edf5;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.part-card:hover { background: #223047; transform: translateY(-2px); }
+.part-card.current { outline: 2px solid var(--tier-color); }
+.part-card.remove { border-top-color: #ff5c5c; text-align: center; color: #ffb1b1; }
+.part-card.remove:hover { background: #3a2028; }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.badge {
+  font-size: 12px; font-weight: 700; color: var(--tier-color);
+  border: 1px solid var(--tier-color); border-radius: 20px; padding: 2px 10px;
+}
+.installed { font-size: 12px; color: #6fdc8c; font-weight: 600; }
+.card-label { font-weight: 600; margin-bottom: 6px; }
+
+.card-stats { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 13px; color: #aebfd8; }
+.card-stats li:nth-child(5) { grid-column: span 2; }
+.card-stats b { color: #fff; }
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>🏗️ Ангар: Робот-конструктор</h1>
+      <div class="total-stats" id="totalStats"></div>
+    </header>
+
+    <main class="content">
+      <!-- Ангар с роботом -->
+      <section class="hangar-wrap">
+        <div class="hangar" id="hangar">
+          <svg id="robotSvg" viewBox="-10 -10 420 540" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2b3648"/>
+                <stop offset="1" stop-color="#1c2331"/>
+              </linearGradient>
+              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+              </filter>
+            </defs>
+
+            <!-- Оружие на спине (за роботом) -->
+            <g id="part-weaponBack" class="robot-part" data-slot="weaponBack"></g>
+
+            <!-- Части робота (порядок отрисовки: ноги -> руки -> тело -> голова) -->
+            <g id="part-legs"   class="robot-part" data-slot="legs"   filter="url(#shadow)"></g>
+            <g id="part-armL"   class="robot-part" data-slot="armL"   filter="url(#shadow)"></g>
+            <g id="part-armR"   class="robot-part" data-slot="armR"   filter="url(#shadow)"></g>
+            <g id="part-body"   class="robot-part" data-slot="body"   filter="url(#shadow)"></g>
+            <g id="part-head"   class="robot-part" data-slot="head"   filter="url(#shadow)"></g>
+
+            <!-- Стволы оружия в руках (поверх рук) -->
+            <g id="part-weaponL" class="robot-part" data-slot="weaponL" filter="url(#shadow)"></g>
+            <g id="part-weaponR" class="robot-part" data-slot="weaponR" filter="url(#shadow)"></g>
+          </svg>
+
+          <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
+        </div>
+
+        <div class="hint">Нажмите на деталь робота или выберите слот справа, чтобы заменить её.</div>
+      </section>
+
+      <!-- Панель управления -->
+      <aside class="panel">
+        <div class="slots" id="slotsList"></div>
+
+        <div class="picker" id="picker">
+          <div class="picker-title" id="pickerTitle">Выберите слот</div>
+          <div class="picker-cards" id="pickerCards"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+// ===== parts.js =====
+/* =========================================================
+   parts.js — данные о деталях робота и их 2D-графика (SVG)
+   Три комплекта: лёгкий (light), средний (medium), тяжёлый (heavy)
+   Характеристики: сила, скорость, грузоподъёмность, вес, ХП
+   ========================================================= */
+
+// IIFE — изолируем переменные от глобальной области видимости
+(function () {
+
+const TIERS = {
+  light:  { name: "Лёгкий",  color: "#4dd2ff", icon: "🟦" },
+  medium: { name: "Средний", color: "#ffb347", icon: "🟨" },
+  heavy:  { name: "Тяжёлый", color: "#ff5c5c", icon: "🟥" },
+};
+
+const SLOTS = [
+  { id: "head", name: "Голова" },
+  { id: "armR", name: "Рука правая" },
+  { id: "armL", name: "Рука левая" },
+  { id: "body", name: "Тело" },
+  { id: "legs", name: "Ноги" },
+];
+
+// stats: str — сила, spd — скорость, cap — грузоподъёмность (кг), weight — вес детали (кг), hp — прочность
+const PARTS = {
+  head: {
+    light:  { label: "Сенсор-купол MK-1",   stats: { str: 1, spd: 8, cap: 2,  weight: 3,  hp: 20 } },
+    medium: { label: "Визор «Страж» T-200", stats: { str: 3, spd: 5, cap: 5,  weight: 8,  hp: 45 } },
+    heavy:  { label: "Мостовой блок «Бастион»", stats: { str: 6, spd: 2, cap: 9, weight: 18, hp: 80 } },
+  },
+  armR: {
+    light:  { label: "Манипулятор «Стриж»",  stats: { str: 3,  spd: 9, cap: 8,  weight: 4,  hp: 18 } },
+    medium: { label: "Серво-рука Т-2",       stats: { str: 7,  spd: 5, cap: 20, weight: 10, hp: 40 } },
+    heavy:  { label: "Гидроклешня «Атлас»",  stats: { str: 14, spd: 2, cap: 45, weight: 24, hp: 70 } },
+  },
+  armL: {
+    light:  { label: "Манипулятор «Стриж»",  stats: { str: 3,  spd: 9, cap: 8,  weight: 4,  hp: 18 } },
+    medium: { label: "Серво-рука Т-2",       stats: { str: 7,  spd: 5, cap: 20, weight: 10, hp: 40 } },
+    heavy:  { label: "Гидроклешня «Атлас»",  stats: { str: 14, spd: 2, cap: 45, weight: 24, hp: 70 } },
+  },
+  body: {
+    light:  { label: "Каркас «Перо»",        stats: { str: 2, spd: 7, cap: 15, weight: 8,  hp: 35 } },
+    medium: { label: "Корпус «Баланс» Б-3",  stats: { str: 5, spd: 5, cap: 35, weight: 18, hp: 70 } },
+    heavy:  { label: "Бронекорпус «Цитадель»", stats: { str: 9, spd: 2, cap: 80, weight: 42, hp: 130 } },
+  },
+  legs: {
+    light:  { label: "Пружины «Кенгуру»",    stats: { str: 2, spd: 10, cap: 10, weight: 5,  hp: 20 } },
+    medium: { label: "Шагоходы Х-3",         stats: { str: 6, spd: 6,  cap: 30, weight: 14, hp: 50 } },
+    heavy:  { label: "Экзоскелет «Мамонт»",  stats: { str: 11, spd: 2, cap: 70, weight: 30, hp: 90 } },
+  },
+};
+
+/* ---------- SVG-графика деталей (координаты под viewBox 400x520) ----------
+   Цвета меняются по комплекту: light — голубые/светлые, medium — оранжевые,
+   heavy — красные/тёмные.
+--------------------------------------------------------------------------- */
+
+function tierPalette(tier) {
+  if (tier === "light")  return { main: "#7de3ff", dark: "#3aa8d8", accent: "#e8fbff", joint: "#2b6f8f" };
+  if (tier === "medium") return { main: "#ffc06a", dark: "#d9822b", accent: "#fff1d6", joint: "#8f5a1b" };
+  return { main: "#ff7b7b", dark: "#c0392b", accent: "#ffd9d0", joint: "#7a2018" };
+}
+
+// Голова
+function svgHead(tier) {
+  const p = tierPalette(tier);
+  if (tier === "light") {
+    return `
+      <circle cx="200" cy="78" r="34" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="176" y="64" width="48" height="20" rx="10" fill="${p.accent}" opacity="0.85"/>
+      <circle cx="188" cy="74" r="5" fill="${p.joint}"/>
+      <circle cx="212" cy="74" r="5" fill="${p.joint}"/>
+      <rect x="192" y="108" width="16" height="10" fill="${p.dark}"/>
+      <line x1="200" y1="44" x2="200" y2="26" stroke="${p.dark}" stroke-width="4"/>
+      <circle cx="200" cy="22" r="6" fill="${p.accent}" stroke="${p.dark}" stroke-width="3"/>`;
+  }
+  if (tier === "medium") {
+    return `
+      <rect x="164" y="46" width="72" height="64" rx="14" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="172" y="62" width="56" height="20" rx="6" fill="#1e2a3a"/>
+      <rect x="178" y="67" width="16" height="10" rx="3" fill="${p.accent}"/>
+      <rect x="206" y="67" width="16" height="10" rx="3" fill="${p.accent}"/>
+      <rect x="186" y="90" width="28" height="8" rx="4" fill="${p.dark}"/>
+      <rect x="190" y="110" width="20" height="10" fill="${p.dark}"/>`;
+  }
+  return `
+    <path d="M156 44 h88 a10 10 0 0 1 10 10 v46 a10 10 0 0 1 -10 10 h-88 a10 10 0 0 1 -10 -10 v-46 a10 10 0 0 1 10 -10 z"
+          fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="168" y="60" width="64" height="18" rx="4" fill="#2a1210"/>
+    <rect x="174" y="64" width="20" height="10" rx="2" fill="#ffdf6b"/>
+    <rect x="206" y="64" width="20" height="10" rx="2" fill="#ffdf6b"/>
+    <rect x="160" y="38" width="16" height="10" fill="${p.dark}"/>
+    <rect x="224" y="38" width="16" height="10" fill="${p.dark}"/>
+    <rect x="184" y="110" width="32" height="12" fill="${p.dark}"/>`;
+}
+
+// Рука (side: -1 слева, +1 справа; mirror через transform)
+function svgArm(tier, side) {
+  const p = tierPalette(tier);
+  const x = side === "R" ? 262 : 106; // плечо
+  const dir = side === "R" ? 1 : -1;
+  const g = (dx) => x + dx * dir;
+
+  if (tier === "light") {
+    return `
+      <circle cx="${x}" cy="150" r="14" fill="${p.dark}"/>
+      <rect x="${g(-5)}" y="150" width="10" height="70" rx="5" fill="${p.main}" stroke="${p.dark}" stroke-width="3"/>
+      <circle cx="${x}" cy="224" r="9" fill="${p.joint}"/>
+      <rect x="${g(-4)}" y="228" width="8" height="52" rx="4" fill="${p.main}" stroke="${p.dark}" stroke-width="3"/>
+      <circle cx="${g(10)}" cy="292" r="10" fill="${p.accent}" stroke="${p.dark}" stroke-width="3"/>`;
+  }
+  if (tier === "medium") {
+    return `
+      <circle cx="${x}" cy="150" r="18" fill="${p.dark}"/>
+      <rect x="${g(-9)}" y="146" width="18" height="76" rx="8" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <circle cx="${x}" cy="228" r="12" fill="${p.joint}"/>
+      <rect x="${g(-8)}" y="234" width="16" height="60" rx="7" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="${g(-12)}" y="292" width="24" height="22" rx="6" fill="${p.dark}"/>
+      <rect x="${g(-6)}" y="312" width="6" height="14" fill="${p.joint}"/>
+      <rect x="${g(2)}" y="312" width="6" height="14" fill="${p.joint}"/>`;
+  }
+  return `
+    <rect x="${g(-24)}" y="128" width="48" height="34" rx="10" fill="${p.dark}"/>
+    <circle cx="${x}" cy="150" r="24" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="${g(-14)}" y="150" width="28" height="82" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="${g(-18)}" y="176" width="36" height="12" rx="6" fill="${p.joint}"/>
+    <circle cx="${x}" cy="238" r="16" fill="${p.dark}"/>
+    <rect x="${g(-13)}" y="248" width="26" height="64" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <path d="M${g(-18)} 312 h36 v18 a6 6 0 0 1 -6 6 h-8 v10 h-6 v-10 h-8 a6 6 0 0 1 -6 -6 z" fill="${p.dark}"/>`;
+}
+
+// Туловище
+function svgBody(tier) {
+  const p = tierPalette(tier);
+  if (tier === "light") {
+    return `
+      <rect x="168" y="120" width="64" height="90" rx="18" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <circle cx="200" cy="158" r="14" fill="${p.accent}" stroke="${p.dark}" stroke-width="3"/>
+      <circle cx="200" cy="158" r="6" fill="${p.joint}"/>
+      <rect x="182" y="210" width="36" height="14" rx="6" fill="${p.dark}"/>`;
+  }
+  if (tier === "medium") {
+    return `
+      <rect x="156" y="116" width="88" height="104" rx="16" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+      <rect x="172" y="132" width="56" height="34" rx="8" fill="#1e2a3a"/>
+      <rect x="180" y="140" width="40" height="6" rx="3" fill="${p.accent}"/>
+      <rect x="180" y="152" width="26" height="6" rx="3" fill="${p.accent}"/>
+      <circle cx="200" cy="190" r="10" fill="${p.dark}"/>
+      <rect x="176" y="220" width="48" height="16" rx="6" fill="${p.dark}"/>`;
+  }
+  return `
+    <rect x="140" y="110" width="120" height="120" rx="14" fill="${p.main}" stroke="${p.dark}" stroke-width="6"/>
+    <rect x="140" y="110" width="120" height="22" rx="10" fill="${p.dark}"/>
+    <rect x="160" y="142" width="80" height="42" rx="8" fill="#2a1210"/>
+    <circle cx="200" cy="163" r="14" fill="#ffdf6b" stroke="${p.dark}" stroke-width="4"/>
+    <rect x="152" y="196" width="24" height="10" rx="4" fill="${p.dark}"/>
+    <rect x="224" y="196" width="24" height="10" rx="4" fill="${p.dark}"/>
+    <rect x="168" y="230" width="64" height="18" rx="6" fill="${p.dark}"/>`;
+}
+
+// Ноги
+function svgLegs(tier) {
+  const p = tierPalette(tier);
+  if (tier === "light") {
+    return `
+      <rect x="182" y="224" width="36" height="10" rx="5" fill="${p.dark}"/>
+      <rect x="184" y="232" width="10" height="66" rx="5" fill="${p.main}" stroke="${p.dark}" stroke-width="3"/>
+      <rect x="206" y="232" width="10" height="66" rx="5" fill="${p.main}" stroke="${p.dark}" stroke-width="3"/>
+      <circle cx="189" cy="302" r="8" fill="${p.joint}"/>
+      <circle cx="211" cy="302" r="8" fill="${p.joint}"/>
+      <line x1="189" y1="308" x2="189" y2="360" stroke="${p.main}" stroke-width="8" stroke-linecap="round"/>
+      <line x1="211" y1="308" x2="211" y2="360" stroke="${p.main}" stroke-width="8" stroke-linecap="round"/>
+      <ellipse cx="189" cy="368" rx="12" ry="7" fill="${p.dark}"/>
+      <ellipse cx="211" cy="368" rx="12" ry="7" fill="${p.dark}"/>`;
+  }
+  if (tier === "medium") {
+    return `
+      <rect x="176" y="232" width="20" height="74" rx="8" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="204" y="232" width="20" height="74" rx="8" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <circle cx="186" cy="310" r="11" fill="${p.joint}"/>
+      <circle cx="214" cy="310" r="11" fill="${p.joint}"/>
+      <rect x="178" y="316" width="16" height="60" rx="7" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="206" y="316" width="16" height="60" rx="7" fill="${p.main}" stroke="${p.dark}" stroke-width="4"/>
+      <rect x="170" y="376" width="30" height="14" rx="5" fill="${p.dark}"/>
+      <rect x="200" y="376" width="30" height="14" rx="5" fill="${p.dark}"/>`;
+  }
+  return `
+    <rect x="166" y="244" width="34" height="80" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="200" y="244" width="34" height="80" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="164" y="270" width="38" height="12" rx="6" fill="${p.joint}"/>
+    <rect x="198" y="270" width="38" height="12" rx="6" fill="${p.joint}"/>
+    <circle cx="183" cy="328" r="15" fill="${p.dark}"/>
+    <circle cx="217" cy="328" r="15" fill="${p.dark}"/>
+    <rect x="168" y="336" width="30" height="64" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <rect x="202" y="336" width="30" height="64" rx="10" fill="${p.main}" stroke="${p.dark}" stroke-width="5"/>
+    <path d="M160 400 h44 v14 a4 4 0 0 1 -4 4 h-36 a4 4 0 0 1 -4 -4 z" fill="${p.dark}"/>
+    <path d="M196 400 h44 v14 a4 4 0 0 1 -4 4 h-36 a4 4 0 0 1 -4 -4 z" fill="${p.dark}"/>`;
+}
+
+/* ---------- Оружие (3 слота × 3 комплекта) ----------
+   stats: dmg — урон за выстрел, rate — скорострельность (выстр/сек),
+   range — дальность (условные единицы по viewBox 400x520),
+   ammo — боезапас, energy — энергия на 1 очередь (мс), weight — вес (кг)
+------------------------------------------------------------------------- */
+const WEAPONS = {
+  weaponR: {
+    light:  { label: "Лазер «Игла» L-1",     stats: { dmg: 6,  rate: 8,  range: 170, ammo: 120, energy: 3,  weight: 3 } },
+    medium: { label: "Импульсер «Оса» P-22", stats: { dmg: 14, rate: 4,  range: 150, ammo: 80,  energy: 8,  weight: 9 } },
+    heavy:  { label: "Гаусс-пушка «Молот» G-7", stats: { dmg: 42, rate: 1.2, range: 210, ammo: 30, energy: 25, weight: 26 } },
+  },
+  weaponL: {
+    light:  { label: "Плазменный веер «Вейл»", stats: { dmg: 5,  rate: 9,  range: 120, ammo: 140, energy: 3,  weight: 3 } },
+    medium: { label: "Дробовик «Громобой» S-4", stats: { dmg: 20, rate: 2,  range: 90,  ammo: 48,  energy: 12, weight: 11 } },
+    heavy:  { label: "Ракетница «Армагеддон» R-9", stats: { dmg: 55, rate: 0.8, range: 190, ammo: 12, energy: 30, weight: 30 } },
+  },
+  weaponBack: {
+    light:  { label: "Рой дронов «Стая» D-3",       stats: { dmg: 4,  rate: 10, range: 160, ammo: 100, energy: 2,  weight: 4 } },
+    medium: { label: "Ракетный блок «Залп» M-6",    stats: { dmg: 18, rate: 3,  range: 180, ammo: 60,  energy: 10, weight: 14 } },
+    heavy:  { label: "Орбитальная линия «Дамоклов меч» O-1", stats: { dmg: 80, rate: 0.5, range: 240, ammo: 6, energy: 40, weight: 34 } },
+  },
+};
+
+const WEAPON_SLOTS = [
+  { id: "weaponR",    name: "Оружие правое" },
+  { id: "weaponL",    name: "Оружие левое" },
+  { id: "weaponBack", name: "Оружие на спине" },
+];
+
+// Графика оружия (крепится к руке / спине робота)
+function svgWeapon(slotId, tier) {
+  const p = tierPalette(tier);
+  if (slotId === "weaponR") {
+    // ствол из правой руки (кисть ~ x=292..300, y≈292)
+    return `
+      <rect x="286" y="280" width="52" height="14" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+      <rect x="330" y="283" width="16" height="8" rx="3" fill="${p.main}"/>
+      <circle cx="348" cy="287" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="296" y="270" width="26" height="10" rx="4" fill="${p.joint}"/>` : ""}`;
+  }
+  if (slotId === "weaponL") {
+    return `
+      <rect x="62" y="280" width="52" height="14" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+      <rect x="54" y="283" width="16" height="8" rx="3" fill="${p.main}"/>
+      <circle cx="52" cy="287" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="78" y="270" width="26" height="10" rx="4" fill="${p.joint}"/>` : ""}`;
+  }
+  // weaponBack — ранец над головой робота (y < 20)
+  const w = tier === "light" ? 46 : tier === "medium" ? 60 : 76;
+  const hgt = tier === "light" ? 18 : tier === "medium" ? 22 : 26;
+  const topY = 18 - hgt; // нижний край ранца на y=18
+  const barrels = [];
+  const n = tier === "light" ? 4 : tier === "medium" ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const bx = 200 - w / 2 + 10 + i * ((w - 20) / Math.max(1, n - 1));
+    barrels.push(`<circle cx="${bx.toFixed(1)}" cy="${topY + 4}" r="4" fill="#fff7c0" stroke="${p.joint}" stroke-width="2"/>`);
+  }
+  return `
+    <rect x="${200 - w / 2}" y="${topY}" width="${w}" height="${hgt}" rx="6" fill="${p.dark}" stroke="#0d1420" stroke-width="2"/>
+    ${barrels.join("")}`;
+}
+
+const SVG_DRAW = {
+  head: (t) => svgHead(t),
+  body: (t) => svgBody(t),
+  legs: (t) => svgLegs(t),
+  armR: (t) => svgArm(t, "R"),
+  armL: (t) => svgArm(t, "L"),
+};
+
+window.PART_DATA = { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon };
+
+})();
+
+// ===== app.js =====
+/* app.js — логика ангара: выбор слотов (детали + оружие), замена, подсчёт характеристик */
+
+// Работает и как отдельный файл (window.PART_DATA), и внутри единого HTML-файла (PART_DATA)
+const _PD = (typeof window !== 'undefined' && window.PART_DATA) ? window.PART_DATA : PART_DATA;
+const { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWeapon } = _PD;
+
+// Текущая сборка робота (по умолчанию — средний комплект)
+let equipped = {
+  head: "medium",
+  armR: "medium",
+  armL: "medium",
+  body: "medium",
+  legs: "medium",
+};
+
+// Экипированное оружие (null — слот пуст)
+let weapons = {
+  weaponR: "medium",
+  weaponL: null,
+  weaponBack: null,
+};
+
+let selectedSlot = null; // может быть id детали или id оружия
+
+/* ---------- Отрисовка робота ---------- */
+function renderRobot() {
+  for (const slot of SLOTS) {
+    const g = document.getElementById("part-" + slot.id);
+    g.innerHTML = SVG_DRAW[slot.id](equipped[slot.id]);
+    g.classList.toggle("selected", selectedSlot === slot.id);
+  }
+  for (const wslot of WEAPON_SLOTS) {
+    const g = document.getElementById("part-" + wslot.id);
+    g.innerHTML = weapons[wslot.id] ? svgWeapon(wslot.id, weapons[wslot.id]) : "";
+    g.classList.toggle("selected", selectedSlot === wslot.id);
+  }
+}
+
+/* ---------- Итоговые характеристики ---------- */
+function computeTotals() {
+  const totals = { str: 0, spd: 0, cap: 0, weight: 0, hp: 0 };
+  for (const slot of SLOTS) {
+    const st = PARTS[slot.id][equipped[slot.id]].stats;
+    totals.str += st.str;
+    totals.cap += st.cap;
+    totals.weight += st.weight;
+    totals.hp += st.hp;
+  }
+  // Вес и DPS оружия
+  totals.dps = 0;
+  totals.weaponCount = 0;
+  for (const wslot of WEAPON_SLOTS) {
+    const tierId = weapons[wslot.id];
+    if (!tierId) continue;
+    const st = WEAPONS[wslot.id][tierId].stats;
+    totals.weight += st.weight;
+    totals.dps += Math.round(st.dmg * st.rate);
+    totals.weaponCount++;
+  }
+  // Скорость — средняя по деталям
+  const speeds = SLOTS.map((s) => PARTS[s.id][equipped[s.id]].stats.spd);
+  totals.spd = Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length * 10) / 10;
+
+  // Штраф скорости за перегрузку: тяжёлые детали и оружие замедляют
+  const speedPenalty = Math.floor(totals.weight / 25);
+  totals.effectiveSpd = Math.max(1, Math.round((totals.spd - speedPenalty) * 10) / 10);
+  return totals;
+}
+
+function renderTotals() {
+  const t = computeTotals();
+  const el = document.getElementById("totalStats");
+  el.innerHTML = `
+    <span class="tstat">💪 Сила: <b>${t.str}</b></span>
+    <span class="tstat">⚡ Скорость: <b>${t.effectiveSpd}</b></span>
+    <span class="tstat">📦 Грузоподъёмность: <b>${t.cap} кг</b></span>
+    <span class="tstat">⚖️ Вес: <b>${t.weight} кг</b></span>
+    <span class="tstat">❤️ ХП: <b>${t.hp}</b></span>
+    <span class="tstat">🔫 Урон/сек: <b>${t.dps}</b></span>`;
+}
+
+/* ---------- Список слотов (детали + оружие) ---------- */
+function makeSlotBtn(name, tierLabel, partLabel, tierColor, slotId, empty) {
+  const btn = document.createElement("button");
+  btn.className = "slot-btn" + (selectedSlot === slotId ? " active" : "") + (empty ? " empty" : "");
+  btn.style.setProperty("--tier-color", tierColor || "#5a6b83");
+  btn.innerHTML = `
+    <span class="slot-name">${name}</span>
+    <span class="slot-tier">${tierLabel}</span>
+    <span class="slot-part">${partLabel}</span>`;
+  btn.addEventListener("click", () => selectSlot(slotId));
+  return btn;
+}
+
+function renderSlots() {
+  const list = document.getElementById("slotsList");
+  list.innerHTML = "";
+
+  const h1 = document.createElement("div");
+  h1.className = "slots-header";
+  h1.textContent = "🦾 Детали";
+  list.appendChild(h1);
+  for (const slot of SLOTS) {
+    const tier = equipped[slot.id];
+    const part = PARTS[slot.id][tier];
+    list.appendChild(makeSlotBtn(slot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, part.label, TIERS[tier].color, slot.id, false));
+  }
+
+  const h2 = document.createElement("div");
+  h2.className = "slots-header";
+  h2.textContent = "🔫 Оружие";
+  list.appendChild(h2);
+  for (const wslot of WEAPON_SLOTS) {
+    const tier = weapons[wslot.id];
+    if (tier) {
+      const wp = WEAPONS[wslot.id][tier];
+      list.appendChild(makeSlotBtn(wslot.name, `${TIERS[tier].icon} ${TIERS[tier].name}`, wp.label, TIERS[tier].color, wslot.id, false));
+    } else {
+      list.appendChild(makeSlotBtn(wslot.name, "— не установлено", "пусто", null, wslot.id, true));
+    }
+  }
+}
+
+/* ---------- Выбор комплекта для слота (деталь или оружие) ---------- */
+function renderPartPicker(slotName) {
+  const cards = document.getElementById("pickerCards");
+  cards.innerHTML = "";
+  for (const tierId of Object.keys(TIERS)) {
+    const tier = TIERS[tierId];
+    const part = PARTS[selectedSlot][tierId];
+    const isCurrent = equipped[selectedSlot] === tierId;
+    const card = document.createElement("button");
+    card.className = "part-card" + (isCurrent ? " current" : "");
+    card.style.setProperty("--tier-color", tier.color);
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="badge">${tier.icon} ${tier.name}</span>
+        ${isCurrent ? '<span class="installed">✔ стоит</span>' : ""}
+      </div>
+      <div class="card-label">${part.label}</div>
+      <ul class="card-stats">
+        <li>💪 Сила: <b>${part.stats.str}</b></li>
+        <li>⚡ Скорость: <b>${part.stats.spd}</b></li>
+        <li>📦 Грузопод.: <b>${part.stats.cap} кг</b></li>
+        <li>⚖️ Вес: <b>${part.stats.weight} кг</b></li>
+        <li>❤️ ХП: <b>${part.stats.hp}</b></li>
+      </ul>`;
+    card.addEventListener("click", () => {
+      equipped[selectedSlot] = tierId;
+      renderAll();
+    });
+    cards.appendChild(card);
+  }
+}
+
+function renderWeaponPicker() {
+  const cards = document.getElementById("pickerCards");
+  cards.innerHTML = "";
+  for (const tierId of Object.keys(TIERS)) {
+    const tier = TIERS[tierId];
+    const wp = WEAPONS[selectedSlot][tierId];
+    const isCurrent = weapons[selectedSlot] === tierId;
+    const dps = Math.round(wp.stats.dmg * wp.stats.rate);
+    const card = document.createElement("button");
+    card.className = "part-card" + (isCurrent ? " current" : "");
+    card.style.setProperty("--tier-color", tier.color);
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="badge">${tier.icon} ${tier.name}</span>
+        ${isCurrent ? '<span class="installed">✔ стоит</span>' : ""}
+      </div>
+      <div class="card-label">${wp.label}</div>
+      <ul class="card-stats">
+        <li>💥 Урон: <b>${wp.stats.dmg}</b></li>
+        <li>🔁 Скорострельность: <b>${wp.stats.rate}/с</b></li>
+        <li>🎯 DPS: <b>${dps}</b></li>
+        <li>📏 Дальность: <b>${wp.stats.range}</b></li>
+        <li>🔷 Боезапас: <b>${wp.stats.ammo}</b></li>
+        <li>⚡ Энергия: <b>${wp.stats.energy}</b></li>
+        <li>⚖️ Вес: <b>${wp.stats.weight} кг</b></li>
+      </ul>`;
+    card.addEventListener("click", () => {
+      weapons[selectedSlot] = tierId;
+      renderAll();
+    });
+    cards.appendChild(card);
+  }
+  // кнопка снять оружие
+  if (weapons[selectedSlot]) {
+    const off = document.createElement("button");
+    off.className = "part-card remove";
+    off.innerHTML = `<div class="card-label">✖ Снять оружие</div>`;
+    off.addEventListener("click", () => {
+      weapons[selectedSlot] = null;
+      renderAll();
+    });
+    cards.appendChild(off);
+  }
+}
+
+function renderPicker() {
+  const title = document.getElementById("pickerTitle");
+  const cards = document.getElementById("pickerCards");
+  if (!selectedSlot) {
+    title.textContent = "Выберите слот (или деталь/оружие на роботе)";
+    cards.innerHTML = "";
+    return;
+  }
+  const isWeapon = selectedSlot.startsWith("weapon");
+  const slotObj = isWeapon ? WEAPON_SLOTS.find((s) => s.id === selectedSlot)
+                           : SLOTS.find((s) => s.id === selectedSlot);
+  title.textContent = `Замена: ${slotObj.name}`;
+  if (isWeapon) renderWeaponPicker();
+  else renderPartPicker(slotObj.name);
+}
+
+function selectSlot(id) {
+  selectedSlot = id;
+  renderAll();
+}
+
+/* ---------- Клик по деталям на роботе ---------- */
+document.querySelectorAll(".robot-part").forEach((g) => {
+  g.addEventListener("click", () => selectSlot(g.dataset.slot));
+});
+
+/* ---------- Полный перерендер ---------- */
+function renderAll() {
+  renderRobot();
+  renderSlots();
+  renderPicker();
+  renderTotals();
+}
+
+renderAll();
+
+</script>
+</body>
+</html>

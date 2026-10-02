@@ -21,3 +21,27 @@ python3 -m http.server 8000
 - `style.css` — оформление (стены, пол, разметка, карточки)
 - `parts.js` — данные деталей (3 комплекта × 5 слотов) и SVG-графика
 - `app.js` — логика замены деталей и подсчёта характеристик
+
+## 🚀 Запуск на своём ПК (без сервера)
+
+**Самый простой способ:**
+1. Скопируйте папку проекта на компьютер.
+2. Дважды кликните по файлу **`ZAPUSTIT-NA-PK.bat`** (Windows) — игра откроется в браузере.
+
+Или просто:
+- дважды кликните **`robot-hangar.html`** — это ЕДИНЫЙ файл игры (весь HTML+CSS+JS внутри, ~30 КБ). Его можно даже перекинуть одному файлом на флешку/в мессенджер и открыть где угодно;
+- или откройте обычный `index.html` (он использует соседние style.css/parts.js/app.js);
+- Linux/macOS: `xdg-open robot-hangar.html` / `open robot-hangar.html`.
+
+Сервер (`python3 -m http.server 8000`) не нужен — всё работает по протоколу file://.
+
+Если меняете исходники (parts.js/app.js/index.html/style.css), единый файл пересоберите командой:
+```bash
+python3 - <<'PY'
+h=open('index.html',encoding='utf-8').read(); c=open('style.css',encoding='utf-8').read()
+p=open('parts.js',encoding='utf-8').read(); a=open('app.js',encoding='utf-8').read()
+s=h.replace('<link rel="stylesheet" href="style.css">','<style>\n'+c+'\n</style>')
+s=s.replace('<script src="parts.js"></script>\n  <script src="app.js"></script>','<script>\n'+p+'\n'+a+'\n</script>')
+open('robot-hangar.html','w',encoding='utf-8').write(s)
+PY
+```
