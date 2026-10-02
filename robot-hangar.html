@@ -35,6 +35,9 @@ body {
 .content { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
 @media (max-width: 860px) { .content { grid-template-columns: 1fr; } }
 
+/* скрытые секции: атрибут hidden должен работать поверх display из классов */
+[hidden] { display: none !important; }
+
 /* ---------- Ангар ---------- */
 .hangar-wrap { display: flex; flex-direction: column; gap: 8px; }
 
@@ -163,18 +166,218 @@ body {
 .cockpit-tip svg { display: block; border-radius: 6px; }
 .tip-caption { font-size: 11.5px; color: #bcd4ee; text-align: center; margin-top: 6px; }
 
+/* ============================================================
+   КОМНАТА ПИЛОТА: экран, рабочий стол, папки, карточка дела
+   ============================================================ */
+.pilot-room { display: flex; flex-direction: column; gap: 10px; }
+
+.room-scene {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #33455f;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5);
+  background: linear-gradient(#2a3143, #1c2230);
+}
+.room-scene svg { display: block; }
+
+/* кликабельные папки на столе */
+.folder { cursor: pointer; transition: transform 0.18s ease, filter 0.18s ease; transform-box: fill-box; transform-origin: center; }
+.folder:hover { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 210, 63, 0.55)); transform: translateY(-10px) scale(1.03); }
+.folder:active { transform: translateY(-4px) scale(0.99); }
+
+/* ---------- Карточка личного дела (поверх сцены) ---------- */
+.dossier {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 12, 20, 0.78);
+  backdrop-filter: blur(3px);
+}
+.dossier-card-anim { animation: dossierPop 0.22s ease; }
+@keyframes dossierPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.dossier[hidden] { display: none; }
+
+.dossier-inner {
+  display: flex; gap: 20px; align-items: flex-start;
+  max-width: 720px; width: calc(100% - 40px);
+  background: #1b2433;
+  border: 1px solid #3d5a80;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  position: relative;
+  animation: dossierPop 0.22s ease;
+}
+.dossier-close {
+  position: absolute; top: 10px; right: 12px;
+  background: #2e3d55; color: #cfe0f5;
+  border: 1px solid #46586f; border-radius: 8px;
+  font-size: 15px; padding: 4px 10px; cursor: pointer;
+}
+.dossier-close:hover { background: #c0392b; color: #fff; }
+
+.dossier-photo { flex: 0 0 190px; }
+.dossier-photo svg { width: 190px; height: auto; display: block; border-radius: 10px; border: 2px solid #3d5a80; }
+
+.dossier-info { flex: 1; min-width: 0; }
+.dossier-info h2 { font-size: 19px; color: #ffd23f; margin-bottom: 4px; padding-right: 30px; }
+.dossier-rank { font-size: 13px; color: #7de3ff; margin-bottom: 12px; }
+.dossier-list { list-style: none; display: grid; gap: 5px; font-size: 13.5px; color: #9fb2cf; }
+.dossier-list b { color: #eef4fc; font-weight: 600; }
+.dossier-mech {
+  margin-top: 14px; padding: 9px 12px;
+  background: #14202f; border: 1px dashed #3d5a80; border-radius: 9px;
+  font-size: 13px; color: #bcd4ee;
+}
+
+/* ---------- Кнопки навигации в шапке ---------- */
+.nav-btns { display: flex; gap: 8px; }
+.nav-btn {
+  background: #1b2433; color: #cfe0f5;
+  border: 1px solid #2e3d55; border-radius: 9px;
+  padding: 8px 14px; font-size: 14px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-btn:hover { background: #243149; }
+.nav-btn.active { background: #2f5fa8; border-color: #7de3ff; color: #fff; box-shadow: 0 0 10px rgba(125,227,255,0.35); }
+.nav-btn.pilot.active { background: #8a4a2f; border-color: #ffd23f; box-shadow: 0 0 10px rgba(255,210,63,0.35); }
+
+/* ---------- Кнопка «В комнату пилота» на мехе ---------- */
+.go-pilot-btn {
+  position: absolute; left: 12px; bottom: 14px; z-index: 5;
+  background: rgba(27, 36, 51, 0.92); color: #ffd23f;
+  border: 1px solid #c9a227; border-radius: 10px;
+  padding: 9px 14px; font-size: 14px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  transition: background 0.15s, transform 0.15s;
+}
+.go-pilot-btn:hover { background: #c9a227; color: #14181f; transform: translateY(-2px); }
+
+@media (max-width: 700px) {
+  .dossier-inner { flex-direction: column; align-items: center; text-align: center; }
+  .dossier-list { font-size: 12.5px; }
+}
+
 </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <h1>🏗️ Ангар: Мех-конструктор (с пилотом)</h1>
+      <h1 id="screenTitle">🏗️ Ангар: Мех-конструктор (с пилотом)</h1>
       <div class="total-stats" id="totalStats"></div>
+      <div class="nav-btns">
+        <button class="nav-btn" id="btnHangar">🏗️ Ангар</button>
+        <button class="nav-btn pilot" id="btnPilotRoom">🪑 Комната пилота</button>
+      </div>
     </header>
 
     <main class="content">
+      <!-- ===== ЭКРАН: КОМНАТА ПИЛОТА (скрыт по умолчанию) ===== -->
+      <section class="pilot-room" id="pilotRoom" hidden>
+        <div class="room-scene">
+          <svg viewBox="0 0 900 560" width="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#3a4258"/><stop offset="1" stop-color="#2a3143"/>
+              </linearGradient>
+              <linearGradient id="deskGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#8a5a34"/><stop offset="1" stop-color="#6b421f"/>
+              </linearGradient>
+              <linearGradient id="lampLight" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/>
+                <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+              </linearGradient>
+              <filter id="folderShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+
+            <!-- стена и пол комнаты -->
+            <rect x="0" y="0" width="900" height="400" fill="url(#wallGrad)"/>
+            <rect x="0" y="400" width="900" height="160" fill="#20222c"/>
+            <rect x="0" y="398" width="900" height="6" fill="#171921"/>
+
+            <!-- окно с видом на ангар -->
+            <rect x="60" y="60" width="220" height="160" rx="6" fill="#101828" stroke="#55617a" stroke-width="8"/>
+            <line x1="170" y1="64" x2="170" y2="216" stroke="#55617a" stroke-width="6"/>
+            <line x1="64" y1="140" x2="276" y2="140" stroke="#55617a" stroke-width="6"/>
+            <!-- силуэт меха за окном -->
+            <g opacity="0.85">
+              <circle cx="120" cy="90" r="4" fill="#ffd23f"/>
+              <circle cx="150" cy="82" r="2.5" fill="#fff" opacity="0.8"/>
+              <path d="M150 200 L150 150 M138 200 L142 160 M162 200 L158 160" stroke="#0d1420" stroke-width="10"/>
+              <rect x="136" y="140" width="28" height="34" rx="4" fill="#0d1420"/>
+              <rect x="142" y="126" width="16" height="16" rx="3" fill="#0d1420"/>
+              <polygon points="140,118 160,118 150,108" fill="#0d1420"/>
+              <rect x="128" y="196" width="44" height="8" fill="#0d1420"/>
+            </g>
+
+            <!-- плакат «Слава пилотам мехов» -->
+            <g transform="rotate(-1.5 700 130)">
+              <rect x="600" y="55" width="200" height="150" rx="6" fill="#f4ecd8" stroke="#3a3226" stroke-width="5"/>
+              <polygon points="700,80 715,118 755,118 723,141 735,180 700,157 665,180 677,141 645,118 685,118" fill="#c0392b"/>
+              <text x="700" y="200" text-anchor="middle" font-family="Arial Black,Arial" font-weight="bold" font-size="15" fill="#3a3226">СЛАВА МЕХАНИКАМ!</text>
+            </g>
+
+            <!-- настольная лампа (свет) -->
+            <polygon points="330,250 300,430 560,430 520,250" fill="url(#lampLight)"/>
+            <rect x="352" y="420" width="70" height="10" rx="4" fill="#2e3440"/>
+            <line x1="387" y1="420" x2="387" y2="300" stroke="#2e3440" stroke-width="8"/>
+            <line x1="387" y1="300" x2="440" y2="262" stroke="#2e3440" stroke-width="8"/>
+            <path d="M418 246 L470 246 L456 286 L432 286 Z" fill="#3f7d5a" stroke="#2b5a40" stroke-width="4"/>
+            <ellipse cx="444" cy="288" rx="12" ry="4" fill="#ffe9a8"/>
+
+            <!-- письменный стол -->
+            <rect x="120" y="428" width="680" height="30" rx="8" fill="url(#deskGrad)" stroke="#4a2d12" stroke-width="4"/>
+            <rect x="150" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="744" y="458" width="26" height="92" fill="#5a3a1c"/>
+            <rect x="560" y="458" width="180" height="70" rx="6" fill="#7a4c22" stroke="#4a2d12" stroke-width="4"/>
+            <circle cx="650" cy="493" r="8" fill="#c9a227"/>
+
+            <!-- кружка с кофе -->
+            <g transform="translate(238 386)">
+              <path d="M-6 -2 Q-14 -12 -4 -20 M4 -4 Q12 -14 2 -24" stroke="#cbd5e4" stroke-width="3" fill="none" opacity="0.6"/>
+              <rect x="-16" y="0" width="34" height="34" rx="6" fill="#dfe6ef" stroke="#9aa7bb" stroke-width="3"/>
+              <path d="M18 8 Q32 12 18 26" fill="none" stroke="#9aa7bb" stroke-width="5"/>
+              <ellipse cx="1" cy="2" rx="15" ry="4" fill="#5b3a1e"/>
+            </g>
+
+            <!-- ДВЕ ПАПКИ С ДЕЛАМИ ПИЛОТОВ (кликабельные) -->
+            <g class="folder folder-male" id="folderMale" transform="translate(430 344) rotate(-7 120 150)" data-pilot="male">
+              <title>Дело пилота: Артём «Ястреб» Соколов</title>
+            </g>
+            <g class="folder folder-female" id="folderFemale" transform="translate(560 350) rotate(6 120 150)" data-pilot="female">
+              <title>Дело пилота: Алиса «Ласточка» Верещагина</title>
+            </g>
+
+            <!-- карандаши в стакане -->
+            <g transform="translate(760 392)">
+              <rect x="-14" y="0" width="30" height="36" rx="5" fill="#33415c" stroke="#22304a" stroke-width="3"/>
+              <line x1="-6" y1="4" x2="-12" y2="-26" stroke="#ffd23f" stroke-width="5"/>
+              <line x1="2" y1="4" x2="2" y2="-32" stroke="#ff5c5c" stroke-width="5"/>
+              <line x1="10" y1="4" x2="16" y2="-24" stroke="#4dff88" stroke-width="5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="hint room-hint">Рабочий стол дежурного по ангара. На столе — две папки с личными делами пилотов. Нажмите на папку, чтобы открыть дело.</div>
+
+        <!-- Карточка дела пилота -->
+        <div class="dossier" id="dossier" hidden>
+          <div class="dossier-inner">
+            <button class="dossier-close" id="dossierClose" title="Закрыть дело">✖</button>
+            <div class="dossier-photo" id="dossierPhoto"></div>
+            <div class="dossier-info">
+              <h2 id="dossierName"></h2>
+              <div class="dossier-rank" id="dossierRank"></div>
+              <ul class="dossier-list" id="dossierList"></ul>
+              <div class="dossier-mech" id="dossierMech"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Ангар с роботом -->
-      <section class="hangar-wrap">
+      <section class="hangar-wrap" id="hangarWrap">
         <div class="hangar" id="hangar">
           <svg id="robotSvg" viewBox="-10 -10 420 540" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -203,6 +406,8 @@ body {
           </svg>
 
           <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
+
+          <!-- Кабина пилота крупным планом (показывается при наведении на тело меха) -->
           <div class="cockpit-tip" id="cockpitTip"></div>
         </div>
 
@@ -549,6 +754,168 @@ window.PART_DATA = { TIERS, SLOTS, PARTS, SVG_DRAW, WEAPONS, WEAPON_SLOTS, svgWe
 
 </script>
   <script>
+/* pilotroom.js — комната пилота: рабочий стол, две папки с делами, аниме-портреты */
+(function () {
+  "use strict";
+
+  /* ---------- Аниме-портрет: пилот-парень (Артём «Ястреб» Соколов) ---------- */
+  function svgPilotM() {
+    return `
+    <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pmBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1d2b45"/><stop offset="1" stop-color="#0f1626"/>
+        </linearGradient>
+        <clipPath id="pmHair"><path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z"/></clipPath>
+      </defs>
+      <rect width="200" height="240" rx="10" fill="url(#pmBg)"/>
+      <circle cx="100" cy="70" r="46" fill="#2a3c5e" opacity="0.5"/>
+      <!-- шея -->
+      <rect x="90" y="128" width="20" height="26" rx="6" fill="#e8b48c"/>
+      <!-- китель лётчика -->
+      <path d="M40 240 L46 178 Q52 156 78 150 L100 158 L122 150 Q148 156 154 178 L160 240 Z" fill="#33486b" stroke="#22304a" stroke-width="3"/>
+      <path d="M78 150 L100 158 L122 150 L118 240 L82 240 Z" fill="#3d5680"/>
+      <path d="M92 152 L100 176 L108 152 L100 146 Z" fill="#dbe6f4"/>
+      <rect x="97" y="164" width="6" height="34" rx="2" fill="#c9a227"/>
+      <polygon points="97,164 103,164 100,172" fill="#ffd23f"/>
+      <rect x="56" y="184" width="20" height="12" rx="2" fill="#c9a227" opacity="0.85"/>
+      <rect x="124" y="184" width="20" height="12" rx="2" fill="#ff5c5c" opacity="0.8"/>
+      <!-- голова -->
+      <path d="M64 84 Q64 132 100 138 Q136 132 136 84 L136 70 Q136 44 100 42 Q64 44 64 70 Z" fill="#f2c29be8" stroke="#d99a6c" stroke-width="2"/>
+      <path d="M64 84 Q64 132 100 138 Q136 132 136 84 L136 70 Q136 44 100 42 Q64 44 64 70 Z" fill="#f3c79e"/>
+      <!-- уши -->
+      <ellipse cx="63" cy="94" rx="6" ry="10" fill="#f3c79e" stroke="#d99a6c" stroke-width="1.5"/>
+      <ellipse cx="137" cy="94" rx="6" ry="10" fill="#f3c79e" stroke="#d99a6c" stroke-width="1.5"/>
+      <!-- волосы тёмно-синие, аниме-чёлка -->
+      <g clip-path="url(#pmHair)">
+        <path d="M52 30 L148 30 L148 96 L52 96 Z" fill="#232f52"/>
+        <path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z" fill="#2c3a66"/>
+        <path d="M70 40 Q100 26 130 40 L126 52 Q100 40 74 52 Z" fill="#3d5288" opacity="0.9"/>
+      </g>
+      <path d="M58 92 Q52 34 100 28 Q148 34 142 92 L136 74 L128 90 L118 68 L104 88 L92 66 L78 88 L68 70 Z"
+            fill="none" stroke="#1a2340" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- брови -->
+      <path d="M74 86 Q84 82 92 86" stroke="#1a2340" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M108 86 Q116 82 126 86" stroke="#1a2340" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <!-- глаза большие, аниме -->
+      <ellipse cx="83" cy="100" rx="10" ry="12" fill="#fff"/>
+      <ellipse cx="117" cy="100" rx="10" ry="12" fill="#fff"/>
+      <circle cx="84" cy="101" r="7" fill="#2f7fd6"/>
+      <circle cx="116" cy="101" r="7" fill="#2f7fd6"/>
+      <circle cx="84" cy="102" r="3.4" fill="#101a2e"/>
+      <circle cx="116" cy="102" r="3.4" fill="#101a2e"/>
+      <circle cx="81" cy="97" r="2.2" fill="#fff"/>
+      <circle cx="113" cy="97" r="2.2" fill="#fff"/>
+      <path d="M73 92 Q83 86 93 92" stroke="#1a2340" stroke-width="2.6" fill="none"/>
+      <path d="M107 92 Q117 86 127 92" stroke="#1a2340" stroke-width="2.6" fill="none"/>
+      <!-- нос и рот -->
+      <path d="M100 108 l-2.5 8 h5" stroke="#d99a6c" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M92 124 Q100 130 108 124" stroke="#a4553f" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <!-- rumянец -->
+      <ellipse cx="76" cy="114" rx="7" ry="3.4" fill="#e8896b" opacity="0.35"/>
+      <ellipse cx="124" cy="114" rx="7" ry="3.4" fill="#e8896b" opacity="0.35"/>
+    </svg>`;
+  }
+
+  /* ---------- Аниме-портрет: пилот-девушка (Алиса «Ласточка» Верещагина) ---------- */
+  function svgPilotF() {
+    return `
+    <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pfBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#45264a"/><stop offset="1" stop-color="#1c1430"/>
+        </linearGradient>
+      </defs>
+      <rect width="200" height="240" rx="10" fill="url(#pfBg)"/>
+      <circle cx="100" cy="70" r="46" fill="#6e3f7d" opacity="0.4"/>
+      <!-- длинные волосы за спиной -->
+      <path d="M56 96 Q44 150 58 214 L74 214 Q64 150 72 110 Z" fill="#7e4fa0"/>
+      <path d="M144 96 Q156 150 142 214 L126 214 Q136 150 128 110 Z" fill="#7e4fa0"/>
+      <!-- шея -->
+      <rect x="91" y="128" width="18" height="26" rx="6" fill="#f0bd97"/>
+      <!-- китель -->
+      <path d="M44 240 L50 178 Q56 158 80 152 L100 160 L120 152 Q144 158 150 178 L156 240 Z" fill="#4a3568" stroke="#33244a" stroke-width="3"/>
+      <path d="M80 152 L100 160 L120 152 L116 240 L84 240 Z" fill="#5b4280"/>
+      <path d="M93 154 L100 178 L107 154 L100 148 Z" fill="#ffeef5"/>
+      <rect x="97.5" y="166" width="5" height="32" rx="2" fill="#e0559d"/>
+      <rect x="58" y="186" width="18" height="11" rx="2" fill="#e0559d" opacity="0.85"/>
+      <rect x="124" y="186" width="18" height="11" rx="2" fill="#7de3ff" opacity="0.8"/>
+      <!-- лицо -->
+      <path d="M66 84 Q66 134 100 140 Q134 134 134 84 L134 70 Q134 46 100 44 Q66 46 66 70 Z" fill="#f8d3ac"/>
+      <!-- уши + серьги -->
+      <ellipse cx="65" cy="96" rx="5.5" ry="9" fill="#f8d3ac"/>
+      <ellipse cx="135" cy="96" rx="5.5" ry="9" fill="#f8d3ac"/>
+      <circle cx="65" cy="108" r="2.4" fill="#ffd23f"/>
+      <circle cx="135" cy="108" r="2.4" fill="#ffd23f"/>
+      <!-- чёлка и хвостик -->
+      <path d="M60 92 Q54 36 100 30 Q146 36 140 92 L132 66 Q120 52 100 52 Q80 52 68 66 Z" fill="#9461b8" stroke="#6c3f8c" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M68 66 Q84 58 100 60 L92 78 Q80 72 74 80 Z" fill="#a878cc"/>
+      <path d="M132 66 Q116 58 100 60 L108 78 Q120 72 126 80 Z" fill="#a878cc"/>
+      <path d="M70 44 Q100 30 130 44 L126 54 Q100 42 74 54 Z" fill="#b98ad8" opacity="0.8"/>
+      <!-- заколка-звезда -->
+      <polygon points="140,70 143,78 151,78 145,83 147,91 140,86 133,91 135,83 129,78 137,78" fill="#ffd23f" stroke="#c9a227" stroke-width="1"/>
+      <!-- брови -->
+      <path d="M76 88 Q84 84 91 87" stroke="#5c3a72" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M109 87 Q116 84 124 88" stroke="#5c3a72" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- глаза -->
+      <ellipse cx="84" cy="102" rx="10" ry="12.5" fill="#fff"/>
+      <ellipse cx="116" cy="102" rx="10" ry="12.5" fill="#fff"/>
+      <circle cx="85" cy="103" r="7.2" fill="#37bf8a"/>
+      <circle cx="115" cy="103" r="7.2" fill="#37bf8a"/>
+      <circle cx="85" cy="104" r="3.4" fill="#12251d"/>
+      <circle cx="115" cy="104" r="3.4" fill="#12251d"/>
+      <circle cx="82" cy="99" r="2.4" fill="#fff"/>
+      <circle cx="112" cy="99" r="2.4" fill="#fff"/>
+      <path d="M74 93 Q84 87 94 93" stroke="#3a2547" stroke-width="2.6" fill="none"/>
+      <path d="M106 93 Q116 87 126 93" stroke="#3a2547" stroke-width="2.6" fill="none"/>
+      <!-- ресницы -->
+      <path d="M74 95 l-3 -3 M126 95 l3 -3" stroke="#3a2547" stroke-width="2" stroke-linecap="round"/>
+      <!-- нос, улыбка -->
+      <path d="M100 110 l-2 7 h4" stroke="#e0a878" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M93 126 Q100 132 107 126" stroke="#c65b7c" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M96 128 Q100 131 104 128" fill="#e07a9b" opacity="0.7"/>
+      <!-- румянец -->
+      <ellipse cx="77" cy="116" rx="7" ry="3.6" fill="#f09aa8" opacity="0.5"/>
+      <ellipse cx="123" cy="116" rx="7" ry="3.6" fill="#f09aa8" opacity="0.5"/>
+    </svg>`;
+  }
+
+  /* ---------- Папка с делом (фрагмент SVG для вставки в сцену комнаты) ---------- */
+  function svgFolder(color, dark, label, emblem) {
+    return `
+    <g filter="url(#folderShadow)">
+        <!-- корешок и клапан -->
+        <path d="M14 30 Q14 14 30 14 L96 14 L112 34 L210 34 Q226 34 226 50 L226 276 Q226 292 210 292 L30 292 Q14 292 14 276 Z"
+              fill="${color}" stroke="${dark}" stroke-width="5"/>
+        <path d="M14 60 L226 60" stroke="${dark}" stroke-width="3" opacity="0.6"/>
+        <!-- листы, торчащие из папки -->
+        <rect x="34" y="20" width="170" height="24" rx="3" fill="#f4ecd8" stroke="#c9bf9f" stroke-width="2"/>
+        <rect x="42" y="12" width="150" height="22" rx="3" fill="#fbf6e8" stroke="#c9bf9f" stroke-width="2"/>
+        <!-- эмблема управления мехов -->
+        <circle cx="120" cy="140" r="52" fill="none" stroke="${dark}" stroke-width="5"/>
+        <path d="M96 128 L120 108 L144 128 L144 158 L120 178 L96 158 Z" fill="${dark}"/>
+        <path d="M108 136 L120 126 L132 136 L132 152 L120 162 L108 152 Z" fill="${color}"/>
+        <text x="120" y="212" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="20" fill="${dark}">${emblem}</text>
+        <!-- подпись дела -->
+        <rect x="34" y="234" width="172" height="40" rx="6" fill="#f4ecd8" stroke="${dark}" stroke-width="3"/>
+        <text x="120" y="251" text-anchor="middle" font-family="Arial" font-weight="bold" font-size="13" fill="#3a3226">ЛИЧНОЕ ДЕЛО</text>
+        <text x="120" y="267" text-anchor="middle" font-family="Arial" font-size="12" fill="#6b5f45">${label}</text>
+      </g>`;
+  }
+
+  /* ---------- Папка, «лежащая» на столе: лёгкий перспективный наклон ---------- */
+  function svgFolderOnDesk(color, dark, label, emblem) {
+    return `
+    <g transform="scale(1 0.8)">
+      ${svgFolder(color, dark, label, emblem)}
+    </g>`;
+  }
+
+  window.PILOT_ROOM = { svgPilotM, svgPilotF, svgFolder, svgFolderOnDesk };
+})();
+
+</script>
+  <script>
 /* app.js — логика ангара: выбор слотов (детали + оружие), замена, подсчёт характеристик */
 
 // Работает и как отдельный файл (window.PART_DATA), и внутри единого HTML-файла (PART_DATA)
@@ -794,6 +1161,121 @@ function renderAll() {
 
 renderAll();
 
-  </script>
+/* ============================================================
+   КОМНАТА ПИЛОТА: переключение экранов, папки с делами
+   ============================================================ */
+const PR = (typeof window !== 'undefined' && window.PILOT_ROOM) ? window.PILOT_ROOM : null;
+
+const pilotRoomEl = document.getElementById("pilotRoom");
+const hangarWrapEl = document.getElementById("hangarWrap");
+const panelEl = document.querySelector(".panel");
+const screenTitle = document.getElementById("screenTitle");
+const btnHangar = document.getElementById("btnHangar");
+const btnPilotRoom = document.getElementById("btnPilotRoom");
+
+// Данные личных дел пилотов
+const PILOTS = {
+  male: {
+    name: "Артём «Ястреб» Соколов",
+    rank: "⭐ Капитан • Ведущий пилот меха MH-7",
+    photo: PR ? PR.svgPilotM() : "",
+    list: [
+      ["Позывной", "Ястреб"],
+      ["Возраст", "27 лет"],
+      ["Стаж полётов", "6 лет / 412 боевых выходов"],
+      ["Любимый мех", "«Цитадель» — тяжёлый комплект"],
+      ["Навыки", "штурм, работа гаусс-орудия, точность 94%"],
+      ["Характер", "спокойный, любит тактику и шахматы"],
+      ["Достижения", "орден «За оборону Сектора-7», кубок ангарных учений"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-7 «Гроза» • средняя сборка, импульсер «Оса»",
+  },
+  female: {
+    name: "Алиса «Ласточка» Верещагина",
+    rank: "⭐ Лейтенант • Пилот разведывательного меха",
+    photo: PR ? PR.svgPilotF() : "",
+    list: [
+      ["Позывной", "Ласточка"],
+      ["Возраст", "24 года"],
+      ["Стаж полётов", "3 года / 187 боевых выходов"],
+      ["Любимый мех", "«Стриж» — лёгкий скоростной комплект"],
+      ["Навыки", "разведка, уклонение, рейды на высокой скорости"],
+      ["Характер", "весёлая, дерзкая, обожает рисовать на броне"],
+      ["Достижения", "рекорд полигона по скорости, медаль «Быстрая тень»"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-3 «Ветер» • лёгкая сборка, лазер «Игла» + рой дронов",
+  },
+};
+
+function showScreen(which) {
+  const isRoom = which === "room";
+  pilotRoomEl.hidden = !isRoom;
+  hangarWrapEl.hidden = isRoom;
+  if (panelEl) panelEl.style.display = isRoom ? "none" : "";
+  screenTitle.textContent = isRoom
+    ? "🪑 Комната пилота: рабочий стол и личные дела"
+    : "🏗️ Ангар: Мех-конструктор (с пилотом)";
+  btnHangar.classList.toggle("active", !isRoom);
+  btnPilotRoom.classList.toggle("active", isRoom);
+  if (!isRoom && cockpitTip) cockpitTip.classList.remove("visible");
+  closeDossier();
+}
+
+btnHangar.addEventListener("click", () => showScreen("hangar"));
+btnPilotRoom.addEventListener("click", () => showScreen("room"));
+
+// Вставляем папки в SVG-сцену комнаты
+if (PR) {
+  document.getElementById("folderMale").innerHTML += PR.svgFolderOnDesk("#2f5fa8", "#1c3a66", "СОКОЛОВ А. • ЯСТРЕБ", "☠ МЕХ-7");
+  document.getElementById("folderFemale").innerHTML += PR.svgFolderOnDesk("#b0487a", "#6e2447", "ВЕРЕЩАГИНА А. • ЛАСТОЧКА", "☠ МЕХ-3");
+}
+
+// Открытие дела по клику на папку
+document.querySelectorAll(".folder").forEach((f) => {
+  f.addEventListener("click", () => openDossier(f.dataset.pilot));
+});
+
+const dossier = document.getElementById("dossier");
+function openDossier(id) {
+  const p = PILOTS[id];
+  if (!p || !PR) return;
+  document.getElementById("dossierPhoto").innerHTML = p.photo;
+  document.getElementById("dossierName").textContent = p.name;
+  document.getElementById("dossierRank").textContent = p.rank;
+  document.getElementById("dossierList").innerHTML = p.list
+    .map(([k, v]) => `<li><span>${k}:</span> <b>${v}</b></li>`)
+    .join("");
+  document.getElementById("dossierMech").textContent = p.mech;
+  dossier.hidden = false;
+  const inner = dossier.querySelector(".dossier-inner");
+  if (inner) {
+    inner.classList.remove("dossier-card-anim");
+    void inner.offsetWidth; // рестарт анимации
+    inner.classList.add("dossier-card-anim");
+  }
+}
+function closeDossier() {
+  if (dossier) dossier.hidden = true;
+}
+document.getElementById("dossierClose").addEventListener("click", closeDossier);
+dossier.addEventListener("click", (e) => { if (!e.target.closest(".dossier-inner")) closeDossier(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDossier(); });
+
+// Кнопка «Комната пилота» прямо из кабины на мехе (по клику на иллюминатор тела)
+const bodyG = document.getElementById("part-body");
+if (bodyG) {
+  const goBtn = document.createElement("button");
+  goBtn.id = "goPilotRoom";
+  goBtn.className = "go-pilot-btn";
+  goBtn.textContent = "🪑 В комнату пилота";
+  goBtn.title = "Открыть рабочий стол пилотов";
+  const wrap = document.getElementById("hangar");
+  if (wrap) wrap.appendChild(goBtn);
+  goBtn.addEventListener("click", () => showScreen("room"));
+}
+
+showScreen("hangar");
+
+</script>
 </body>
 </html>

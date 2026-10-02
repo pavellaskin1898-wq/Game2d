@@ -27,6 +27,9 @@ body {
 .content { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
 @media (max-width: 860px) { .content { grid-template-columns: 1fr; } }
 
+/* скрытые секции: атрибут hidden должен работать поверх display из классов */
+[hidden] { display: none !important; }
+
 /* ---------- Ангар ---------- */
 .hangar-wrap { display: flex; flex-direction: column; gap: 8px; }
 
@@ -154,3 +157,95 @@ body {
 .cockpit-tip.visible { opacity: 1; transform: translateY(0); }
 .cockpit-tip svg { display: block; border-radius: 6px; }
 .tip-caption { font-size: 11.5px; color: #bcd4ee; text-align: center; margin-top: 6px; }
+
+/* ============================================================
+   КОМНАТА ПИЛОТА: экран, рабочий стол, папки, карточка дела
+   ============================================================ */
+.pilot-room { display: flex; flex-direction: column; gap: 10px; }
+
+.room-scene {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #33455f;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.5);
+  background: linear-gradient(#2a3143, #1c2230);
+}
+.room-scene svg { display: block; }
+
+/* кликабельные папки на столе */
+.folder { cursor: pointer; transition: transform 0.18s ease, filter 0.18s ease; transform-box: fill-box; transform-origin: center; }
+.folder:hover { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255, 210, 63, 0.55)); transform: translateY(-10px) scale(1.03); }
+.folder:active { transform: translateY(-4px) scale(0.99); }
+
+/* ---------- Карточка личного дела (поверх сцены) ---------- */
+.dossier {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 12, 20, 0.78);
+  backdrop-filter: blur(3px);
+}
+.dossier-card-anim { animation: dossierPop 0.22s ease; }
+@keyframes dossierPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.dossier[hidden] { display: none; }
+
+.dossier-inner {
+  display: flex; gap: 20px; align-items: flex-start;
+  max-width: 720px; width: calc(100% - 40px);
+  background: #1b2433;
+  border: 1px solid #3d5a80;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  position: relative;
+  animation: dossierPop 0.22s ease;
+}
+.dossier-close {
+  position: absolute; top: 10px; right: 12px;
+  background: #2e3d55; color: #cfe0f5;
+  border: 1px solid #46586f; border-radius: 8px;
+  font-size: 15px; padding: 4px 10px; cursor: pointer;
+}
+.dossier-close:hover { background: #c0392b; color: #fff; }
+
+.dossier-photo { flex: 0 0 190px; }
+.dossier-photo svg { width: 190px; height: auto; display: block; border-radius: 10px; border: 2px solid #3d5a80; }
+
+.dossier-info { flex: 1; min-width: 0; }
+.dossier-info h2 { font-size: 19px; color: #ffd23f; margin-bottom: 4px; padding-right: 30px; }
+.dossier-rank { font-size: 13px; color: #7de3ff; margin-bottom: 12px; }
+.dossier-list { list-style: none; display: grid; gap: 5px; font-size: 13.5px; color: #9fb2cf; }
+.dossier-list b { color: #eef4fc; font-weight: 600; }
+.dossier-mech {
+  margin-top: 14px; padding: 9px 12px;
+  background: #14202f; border: 1px dashed #3d5a80; border-radius: 9px;
+  font-size: 13px; color: #bcd4ee;
+}
+
+/* ---------- Кнопки навигации в шапке ---------- */
+.nav-btns { display: flex; gap: 8px; }
+.nav-btn {
+  background: #1b2433; color: #cfe0f5;
+  border: 1px solid #2e3d55; border-radius: 9px;
+  padding: 8px 14px; font-size: 14px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-btn:hover { background: #243149; }
+.nav-btn.active { background: #2f5fa8; border-color: #7de3ff; color: #fff; box-shadow: 0 0 10px rgba(125,227,255,0.35); }
+.nav-btn.pilot.active { background: #8a4a2f; border-color: #ffd23f; box-shadow: 0 0 10px rgba(255,210,63,0.35); }
+
+/* ---------- Кнопка «В комнату пилота» на мехе ---------- */
+.go-pilot-btn {
+  position: absolute; left: 12px; bottom: 14px; z-index: 5;
+  background: rgba(27, 36, 51, 0.92); color: #ffd23f;
+  border: 1px solid #c9a227; border-radius: 10px;
+  padding: 9px 14px; font-size: 14px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  transition: background 0.15s, transform 0.15s;
+}
+.go-pilot-btn:hover { background: #c9a227; color: #14181f; transform: translateY(-2px); }
+
+@media (max-width: 700px) {
+  .dossier-inner { flex-direction: column; align-items: center; text-align: center; }
+  .dossier-list { font-size: 12.5px; }
+}

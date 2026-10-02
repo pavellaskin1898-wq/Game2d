@@ -242,3 +242,118 @@ function renderAll() {
 }
 
 renderAll();
+
+/* ============================================================
+   КОМНАТА ПИЛОТА: переключение экранов, папки с делами
+   ============================================================ */
+const PR = (typeof window !== 'undefined' && window.PILOT_ROOM) ? window.PILOT_ROOM : null;
+
+const pilotRoomEl = document.getElementById("pilotRoom");
+const hangarWrapEl = document.getElementById("hangarWrap");
+const panelEl = document.querySelector(".panel");
+const screenTitle = document.getElementById("screenTitle");
+const btnHangar = document.getElementById("btnHangar");
+const btnPilotRoom = document.getElementById("btnPilotRoom");
+
+// Данные личных дел пилотов
+const PILOTS = {
+  male: {
+    name: "Артём «Ястреб» Соколов",
+    rank: "⭐ Капитан • Ведущий пилот меха MH-7",
+    photo: PR ? PR.svgPilotM() : "",
+    list: [
+      ["Позывной", "Ястреб"],
+      ["Возраст", "27 лет"],
+      ["Стаж полётов", "6 лет / 412 боевых выходов"],
+      ["Любимый мех", "«Цитадель» — тяжёлый комплект"],
+      ["Навыки", "штурм, работа гаусс-орудия, точность 94%"],
+      ["Характер", "спокойный, любит тактику и шахматы"],
+      ["Достижения", "орден «За оборону Сектора-7», кубок ангарных учений"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-7 «Гроза» • средняя сборка, импульсер «Оса»",
+  },
+  female: {
+    name: "Алиса «Ласточка» Верещагина",
+    rank: "⭐ Лейтенант • Пилот разведывательного меха",
+    photo: PR ? PR.svgPilotF() : "",
+    list: [
+      ["Позывной", "Ласточка"],
+      ["Возраст", "24 года"],
+      ["Стаж полётов", "3 года / 187 боевых выходов"],
+      ["Любимый мех", "«Стриж» — лёгкий скоростной комплект"],
+      ["Навыки", "разведка, уклонение, рейды на высокой скорости"],
+      ["Характер", "весёлая, дерзкая, обожает рисовать на броне"],
+      ["Достижения", "рекорд полигона по скорости, медаль «Быстрая тень»"],
+    ],
+    mech: "🤖 Закреплённый мех: MH-3 «Ветер» • лёгкая сборка, лазер «Игла» + рой дронов",
+  },
+};
+
+function showScreen(which) {
+  const isRoom = which === "room";
+  pilotRoomEl.hidden = !isRoom;
+  hangarWrapEl.hidden = isRoom;
+  if (panelEl) panelEl.style.display = isRoom ? "none" : "";
+  screenTitle.textContent = isRoom
+    ? "🪑 Комната пилота: рабочий стол и личные дела"
+    : "🏗️ Ангар: Мех-конструктор (с пилотом)";
+  btnHangar.classList.toggle("active", !isRoom);
+  btnPilotRoom.classList.toggle("active", isRoom);
+  if (!isRoom && cockpitTip) cockpitTip.classList.remove("visible");
+  closeDossier();
+}
+
+btnHangar.addEventListener("click", () => showScreen("hangar"));
+btnPilotRoom.addEventListener("click", () => showScreen("room"));
+
+// Вставляем папки в SVG-сцену комнаты
+if (PR) {
+  document.getElementById("folderMale").innerHTML += PR.svgFolderOnDesk("#2f5fa8", "#1c3a66", "СОКОЛОВ А. • ЯСТРЕБ", "☠ МЕХ-7");
+  document.getElementById("folderFemale").innerHTML += PR.svgFolderOnDesk("#b0487a", "#6e2447", "ВЕРЕЩАГИНА А. • ЛАСТОЧКА", "☠ МЕХ-3");
+}
+
+// Открытие дела по клику на папку
+document.querySelectorAll(".folder").forEach((f) => {
+  f.addEventListener("click", () => openDossier(f.dataset.pilot));
+});
+
+const dossier = document.getElementById("dossier");
+function openDossier(id) {
+  const p = PILOTS[id];
+  if (!p || !PR) return;
+  document.getElementById("dossierPhoto").innerHTML = p.photo;
+  document.getElementById("dossierName").textContent = p.name;
+  document.getElementById("dossierRank").textContent = p.rank;
+  document.getElementById("dossierList").innerHTML = p.list
+    .map(([k, v]) => `<li><span>${k}:</span> <b>${v}</b></li>`)
+    .join("");
+  document.getElementById("dossierMech").textContent = p.mech;
+  dossier.hidden = false;
+  const inner = dossier.querySelector(".dossier-inner");
+  if (inner) {
+    inner.classList.remove("dossier-card-anim");
+    void inner.offsetWidth; // рестарт анимации
+    inner.classList.add("dossier-card-anim");
+  }
+}
+function closeDossier() {
+  if (dossier) dossier.hidden = true;
+}
+document.getElementById("dossierClose").addEventListener("click", closeDossier);
+dossier.addEventListener("click", (e) => { if (!e.target.closest(".dossier-inner")) closeDossier(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDossier(); });
+
+// Кнопка «Комната пилота» прямо из кабины на мехе (по клику на иллюминатор тела)
+const bodyG = document.getElementById("part-body");
+if (bodyG) {
+  const goBtn = document.createElement("button");
+  goBtn.id = "goPilotRoom";
+  goBtn.className = "go-pilot-btn";
+  goBtn.textContent = "🪑 В комнату пилота";
+  goBtn.title = "Открыть рабочий стол пилотов";
+  const wrap = document.getElementById("hangar");
+  if (wrap) wrap.appendChild(goBtn);
+  goBtn.addEventListener("click", () => showScreen("room"));
+}
+
+showScreen("hangar");
