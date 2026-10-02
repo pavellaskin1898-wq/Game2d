@@ -1,0 +1,57 @@
+/* MECH TACTICS: DIABLO — пиксельный UI в духе D2/FM */
+* { box-sizing: border-box; margin: 0; }
+html, body { background: #0a0b0e; color: #cfc9b8; font-family: "Courier New", monospace; }
+#app { max-width: 1300px; margin: 0 auto; padding: 8px; }
+canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+/* --- Ангар --- */
+#scr-hangar { display: flex; gap: 10px; }
+.left { flex: 1 1 62%; min-width: 0; }
+.left canvas { width: 100%; height: auto; border: 3px solid #3a3f4a; box-shadow: 0 0 0 2px #14161c, 0 0 24px #000a; background: #14161c; }
+.right { flex: 1 1 38%; border: 3px solid #3a3f4a; background: linear-gradient(#1b1e25, #14161c); padding: 10px; max-height: 92vh; overflow-y: auto; }
+.right h2 { color: #ffd23e; font-size: 13px; letter-spacing: 3px; border-bottom: 2px solid #5b6068; margin: 10px 0 6px; text-shadow: 1px 1px 0 #000; }
+.slot-group { margin-bottom: 8px; }
+.slot-title { color: #8fa9c9; font-size: 11px; letter-spacing: 2px; margin: 6px 0 3px; }
+.tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.tiers.weapons { grid-template-columns: repeat(3, 1fr); max-height: 172px; overflow-y: auto; }
+.pbtn, .wbtn { background: #23262e; border: 2px solid #3a3f4a; color: #cfc9b8; font-family: inherit;
+  font-size: 9px; padding: 4px; cursor: pointer; text-align: left; line-height: 1.35; }
+.pbtn em { display: block; color: #6fa8c9; font-style: normal; font-size: 8px; letter-spacing: 1px; }
+.pbtn b, .wbtn b { display: block; color: #fff; font-size: 10px; }
+.pbtn i, .wbtn i { display: block; color: #9aa0ac; font-style: normal; font-size: 8px; }
+.pbtn:hover, .wbtn:hover { border-color: #ffd23e; background: #2c303a; }
+.pbtn.cur, .wbtn.cur { border-color: #ffd23e; background: #3d3320; box-shadow: inset 0 0 0 1px #ffd23e55; }
+#status .row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 4px; border-bottom: 1px dashed #2c303a; }
+#status .row b { color: #fff; }
+#status .warn { color: #ff6a4a; }
+.hangar-actions { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.big { background: #3d3320; border: 3px solid #ffd23e; color: #ffd23e; font-family: inherit; font-size: 15px;
+  letter-spacing: 2px; padding: 10px 18px; cursor: pointer; text-shadow: 1px 1px 0 #000; }
+.big:hover { background: #5a4a26; }
+.hintline { font-size: 10px; color: #7a808c; }
+
+/* --- Бой --- */
+#scr-battle { position: relative; }
+.topbar { display: flex; align-items: center; gap: 12px; background: #1b1e25; border: 3px solid #3a3f4a; padding: 6px 10px; font-size: 13px; }
+#turn-label { color: #ffd23e; letter-spacing: 2px; }
+#phud { color: #8fa9c9; flex: 1; font-size: 11px; }
+.battle-wrap { position: relative; }
+#cvb { width: 100%; height: auto; border: 3px solid #3a3f4a; background: #0c0d10; cursor: crosshair; }
+#unit-info { position: absolute; top: 8px; left: 8px; background: #000000cc; border: 1px solid #5b6068; padding: 4px 8px; font-size: 10px; color: #cfe3ff; max-width: 92%; }
+#hint { position: absolute; bottom: 64px; left: 8px; background: #000000bb; border: 1px solid #c9a227; padding: 3px 8px; font-size: 11px; color: #ffd23e; }
+.actions { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; }
+.actions button, .topbar button { background: #23262e; border: 2px solid #5b6068; color: #cfc9b8; font-family: inherit; font-size: 11px; padding: 6px 10px; cursor: pointer; letter-spacing: 1px; }
+.actions button:hover:not(:disabled), .topbar button:hover { border-color: #ffd23e; color: #ffd23e; }
+.actions button:disabled { opacity: .35; cursor: default; }
+#log { position: absolute; bottom: 8px; right: 8px; width: 300px; max-height: 110px; overflow-y: auto;
+  background: #000000c8; border: 1px solid #3a3f4a; font-size: 10px; padding: 4px 6px; color: #9fb28f; }
+#log div { border-bottom: 1px dotted #23262e; padding: 1px 0; }
+.scroll::-webkit-scrollbar { width: 8px; } .scroll::-webkit-scrollbar-thumb { background: #3a3f4a; }
+
+/* --- Результат --- */
+#scr-result { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000a; z-index: 5; }
+.result-box { border: 3px solid #ffd23e; background: #14161c; padding: 24px 34px; text-align: center; box-shadow: 0 0 40px #000; }
+.result-box h1 { color: #ffd23e; letter-spacing: 3px; margin-bottom: 10px; text-shadow: 2px 2px 0 #000; }
+.result-box p { font-size: 12px; margin-bottom: 16px; color: #cfc9b8; }
+.result-box button { margin: 0 4px; }
+@media (max-width: 900px) { #scr-hangar { flex-direction: column; } }

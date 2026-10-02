@@ -1,0 +1,748 @@
+{
+ "_meta": {
+  "source": "https://github.com/pavellaskin1898-wq/Game-3 (front_mission_3_data.json)",
+  "note": "Head объединён с Body в слот Torso (по ТЗ). Числа пересчитаны из оригинальных полей: dmg=AT/4, rng=range_cm/100.",
+  "format_example": {
+   "weapon": [
+    "Mk9 Sniper",
+    "rifle",
+    53,
+    69,
+    200,
+    "",
+    "",
+    13,
+    9
+   ],
+   "body": [
+    "Drake M2C",
+    292,
+    332,
+    382,
+    438,
+    502,
+    578,
+    662,
+    762,
+    60,
+    344,
+    "Chaff",
+    15
+   ],
+   "arm": [
+    "Shangdi 1",
+    172,
+    206,
+    258,
+    309,
+    361,
+    440,
+    498,
+    610,
+    51,
+    14,
+    25,
+    45,
+    81,
+    147,
+    "Double Shot 2"
+   ],
+   "leg": [
+    "Drake M2C",
+    240,
+    273,
+    314,
+    360,
+    412,
+    475,
+    544,
+    626,
+    18,
+    2,
+    "EXP x2",
+    4,
+    2,
+    3,
+    2
+   ]
+  }
+ },
+ "weapons": {
+  "Nightingale": {
+   "name": "Nightingale",
+   "type": "missile",
+   "dmg": 31,
+   "rng": 7,
+   "ammo": 12,
+   "weight": 41,
+   "src": [
+    "Nightingale",
+    "missile",
+    123,
+    124,
+    660,
+    "",
+    "",
+    "",
+    41
+   ]
+  },
+  "Huoyao 3": {
+   "name": "Huoyao 3",
+   "type": "flame thrower",
+   "dmg": 20,
+   "rng": 7,
+   "ammo": 45,
+   "weight": 37,
+   "src": [
+    "Huoyao 3",
+    "flame thrower",
+    81,
+    28,
+    660,
+    "",
+    "",
+    45,
+    37
+   ]
+  },
+  "Wanzerfaust": {
+   "name": "Wanzerfaust",
+   "type": "grenade",
+   "dmg": 23,
+   "rng": 6,
+   "ammo": 13,
+   "weight": 20,
+   "src": [
+    "Wanzerfaust",
+    "grenade",
+    92,
+    62,
+    260,
+    "",
+    "",
+    13,
+    ""
+   ]
+  },
+  "Mk18 Spike": {
+   "name": "Mk18 Spike",
+   "type": "spike",
+   "dmg": 8,
+   "rng": 6,
+   "ammo": 32,
+   "weight": 20,
+   "src": [
+    "Mk18 Spike",
+    "spike",
+    28,
+    90,
+    400,
+    "",
+    "",
+    32,
+    ""
+   ]
+  },
+  "Mk9 Sniper": {
+   "name": "Mk9 Sniper",
+   "type": "rifle",
+   "dmg": 13,
+   "rng": 6,
+   "ammo": 13,
+   "weight": 9,
+   "src": [
+    "Mk9 Sniper",
+    "rifle",
+    53,
+    69,
+    200,
+    "",
+    "",
+    13,
+    9
+   ]
+  },
+  "Drozel": {
+   "name": "Drozel",
+   "type": "missile",
+   "dmg": 12,
+   "rng": 6,
+   "ammo": 12,
+   "weight": 20,
+   "src": [
+    "Drozel",
+    "missile",
+    "",
+    124,
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  "Miner AT": {
+   "name": "Miner AT",
+   "type": "missile",
+   "dmg": 12,
+   "rng": 6,
+   "ammo": 12,
+   "weight": 20,
+   "src": [
+    "Miner AT",
+    "missile",
+    "",
+    107,
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  "Bjariger": {
+   "name": "Bjariger",
+   "type": "missile",
+   "dmg": 34,
+   "rng": 9,
+   "ammo": 60,
+   "weight": 45,
+   "src": [
+    "Bjariger",
+    "missile",
+    137,
+    145,
+    900,
+    "",
+    "",
+    60,
+    45
+   ]
+  },
+  "Zhiniao 50": {
+   "name": "Zhiniao 50",
+   "type": "missile",
+   "dmg": 31,
+   "rng": 7,
+   "ammo": 40,
+   "weight": 28,
+   "src": [
+    "Zhiniao 50",
+    "missile",
+    123,
+    124,
+    660,
+    "",
+    "",
+    40,
+    28
+   ]
+  },
+  "Wagtail 2": {
+   "name": "Wagtail 2",
+   "type": "missile",
+   "dmg": 24,
+   "rng": 6,
+   "ammo": 13,
+   "weight": 9,
+   "src": [
+    "Wagtail 2",
+    "missile",
+    96,
+    87,
+    380,
+    "",
+    "",
+    13,
+    9
+   ]
+  },
+  "Laoxing 6": {
+   "name": "Laoxing 6",
+   "type": "rifle",
+   "dmg": 16,
+   "rng": 6,
+   "ammo": 23,
+   "weight": 22,
+   "src": [
+    "Laoxing 6",
+    "rifle",
+    62,
+    82,
+    460,
+    "",
+    "",
+    23,
+    22
+   ]
+  },
+  "Mk11 Sniper": {
+   "name": "Mk11 Sniper",
+   "type": "rifle",
+   "dmg": 21,
+   "rng": 8,
+   "ammo": 60,
+   "weight": 45,
+   "src": [
+    "Mk11 Sniper",
+    "rifle",
+    84,
+    117,
+    780,
+    "",
+    "",
+    60,
+    45
+   ]
+  },
+  "Laohu 3": {
+   "name": "Laohu 3",
+   "type": "rifle",
+   "dmg": 18,
+   "rng": 6,
+   "ammo": 39,
+   "weight": 28,
+   "src": [
+    "Laohu 3",
+    "rifle",
+    73,
+    98,
+    600,
+    "",
+    "",
+    39,
+    28
+   ]
+  },
+  "Arc Barrel4": {
+   "name": "Arc Barrel4",
+   "type": "m.gun",
+   "dmg": 23,
+   "rng": 8,
+   "ammo": 60,
+   "weight": 45,
+   "src": [
+    "Arc Barrel4",
+    "m.gun",
+    91,
+    21,
+    800,
+    "",
+    "",
+    60,
+    45
+   ]
+  },
+  "Huida 3": {
+   "name": "Huida 3",
+   "type": "m.gun",
+   "dmg": 20,
+   "rng": 6,
+   "ammo": 45,
+   "weight": 28,
+   "src": [
+    "Huida 3",
+    "m.gun",
+    78,
+    18,
+    620,
+    "",
+    "",
+    45,
+    28
+   ]
+  },
+  "Type 13GR": {
+   "name": "Type 13GR",
+   "type": "grenade",
+   "dmg": 31,
+   "rng": 6,
+   "ammo": 31,
+   "weight": 28,
+   "src": [
+    "Type 13GR",
+    "grenade",
+    124,
+    88,
+    600,
+    "",
+    "",
+    31,
+    28
+   ]
+  },
+  "Yunsheng34": {
+   "name": "Yunsheng34",
+   "type": "missile",
+   "dmg": 27,
+   "rng": 6,
+   "ammo": 23,
+   "weight": 22,
+   "src": [
+    "Yunsheng34",
+    "missile",
+    109,
+    104,
+    460,
+    "",
+    "",
+    23,
+    22
+   ]
+  },
+  "Scarab F2": {
+   "name": "Scarab F2",
+   "type": "rifle",
+   "dmg": 18,
+   "rng": 6,
+   "ammo": 12,
+   "weight": 41,
+   "src": [
+    "Scarab F2",
+    "rifle",
+    73,
+    98,
+    600,
+    "",
+    "",
+    "",
+    41
+   ]
+  }
+ },
+ "parts": {
+  "torso": {
+   "Drake M2C": {
+    "name": "Drake M2C",
+    "hp": 762,
+    "weight": 60,
+    "extra": {
+     "df": 10
+    },
+    "tier": "light",
+    "src": [
+     "Drake M2C",
+     292,
+     332,
+     382,
+     438,
+     502,
+     578,
+     662,
+     762,
+     60,
+     344,
+     "Chaff",
+     15
+    ]
+   },
+   "Getty": {
+    "name": "Getty",
+    "hp": 887,
+    "weight": 42,
+    "extra": {
+     "df": 10
+    },
+    "tier": "light",
+    "src": [
+     "Getty",
+     340,
+     387,
+     445,
+     510,
+     584,
+     673,
+     771,
+     887,
+     42,
+     254,
+     "Revenge 3",
+     10
+    ]
+   },
+   "Lanze": {
+    "name": "Lanze",
+    "hp": 1647,
+    "weight": 39,
+    "extra": {
+     "df": 10
+    },
+    "tier": "light",
+    "src": [
+     "Lanze",
+     464,
+     556,
+     696,
+     835,
+     974,
+     1187,
+     1345,
+     1647,
+     39,
+     206,
+     "Tackle 2",
+     15
+    ]
+   }
+  },
+  "armR": {
+   "Shangdi 1": {
+    "name": "Shangdi 1",
+    "hp": 610,
+    "weight": 51,
+    "extra": {
+     "acc": 147,
+     "df": 12
+    },
+    "tier": "heavy",
+    "src": [
+     "Shangdi 1",
+     172,
+     206,
+     258,
+     309,
+     361,
+     440,
+     498,
+     610,
+     51,
+     14,
+     25,
+     45,
+     81,
+     147,
+     "Double Shot 2"
+    ]
+   },
+   "Jinyo Mk110": {
+    "name": "Jinyo Mk110",
+    "hp": 553,
+    "weight": 36,
+    "extra": {
+     "acc": 105,
+     "df": 12
+    },
+    "tier": "heavy",
+    "src": [
+     "Jinyo Mk110",
+     212,
+     241,
+     277,
+     318,
+     364,
+     419,
+     481,
+     553,
+     36,
+     10,
+     18,
+     32,
+     58,
+     105,
+     "ROFUP 2"
+    ]
+   },
+   "Lanze": {
+    "name": "Lanze",
+    "hp": 762,
+    "weight": 15,
+    "extra": {
+     "acc": 25,
+     "df": 12
+    },
+    "tier": "light",
+    "src": [
+     "Lanze",
+     292,
+     332,
+     382,
+     438,
+     502,
+     578,
+     662,
+     762,
+     15,
+     5,
+     7,
+     11,
+     16,
+     25,
+     "Shield Atk 2"
+    ]
+   }
+  },
+  "armL": {
+   "Drake M2C": {
+    "name": "Drake M2C",
+    "hp": 480,
+    "weight": 45,
+    "extra": {
+     "acc": 126,
+     "df": 12
+    },
+    "tier": "heavy",
+    "src": [
+     "Drake M2C",
+     184,
+     209,
+     241,
+     276,
+     316,
+     364,
+     417,
+     480,
+     45,
+     12,
+     21,
+     38,
+     69,
+     126,
+     "Pilot DMG 1"
+    ]
+   },
+   "Getty": {
+    "name": "Getty",
+    "hp": 667,
+    "weight": 36,
+    "extra": {
+     "acc": 105,
+     "df": 12
+    },
+    "tier": "heavy",
+    "src": [
+     "Getty",
+     212,
+     250,
+     294,
+     347,
+     409,
+     481,
+     566,
+     667,
+     36,
+     10,
+     18,
+     32,
+     58,
+     105,
+     "Firing Squad"
+    ]
+   },
+   "Grapple M1": {
+    "name": "Grapple M1",
+    "hp": 919,
+    "weight": 15,
+    "extra": {
+     "acc": 37,
+     "df": 12
+    },
+    "tier": "light",
+    "src": [
+     "Grapple M1",
+     292,
+     344,
+     405,
+     478,
+     563,
+     662,
+     779,
+     919,
+     15,
+     5,
+     8,
+     13,
+     22,
+     37,
+     "Double Punch 1"
+    ]
+   }
+  },
+  "legs": {
+   "Drake M2C": {
+    "name": "Drake M2C",
+    "hp": 626,
+    "weight": 18,
+    "extra": {
+     "speed": 2,
+     "evasion": 12
+    },
+    "tier": "light",
+    "src": [
+     "Drake M2C",
+     240,
+     273,
+     314,
+     360,
+     412,
+     475,
+     544,
+     626,
+     18,
+     2,
+     "EXP x2",
+     4,
+     2,
+     3,
+     2
+    ]
+   },
+   "Vinedrai": {
+    "name": "Vinedrai",
+    "hp": 994,
+    "weight": 43,
+    "extra": {
+     "speed": 3,
+     "evasion": 12
+    },
+    "tier": "medium",
+    "src": [
+     "Vinedrai",
+     280,
+     336,
+     420,
+     504,
+     583,
+     716,
+     812,
+     994,
+     43,
+     3,
+     "EXP x4",
+     4,
+     3,
+     2,
+     2
+    ]
+   },
+   "Lanze": {
+    "name": "Lanze",
+    "hp": 1363,
+    "weight": 59,
+    "extra": {
+     "speed": 6,
+     "evasion": 12
+    },
+    "tier": "heavy",
+    "src": [
+     "Lanze",
+     384,
+     460,
+     576,
+     691,
+     806,
+     983,
+     1113,
+     1363,
+     59,
+     6,
+     "Avoid 40",
+     8,
+     3,
+     2,
+     2
+    ]
+   }
+  }
+ }
+}
