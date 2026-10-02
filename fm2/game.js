@@ -258,14 +258,25 @@ class IsometricRenderer {
   }
   drawMech(m, hl) {
     const t = BF.at(m.x, m.y); const { sx, sy } = this.iso(m.x, m.y, t ? t.h : 0);
-    const ctx = this.ctx; const P = m.parts;
+    const ctx = this.ctx;
+    const X = sx + TW / 2, Y = sy + TH / 2 + 6; // точка подошв на тайле
+    // тень
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(X, Y + 8, 17, 6, 0, 0, 7); ctx.fill();
+    if (hl) { ctx.strokeStyle = hl; ctx.lineWidth = 2; ctx.strokeRect(X - 19, Y - 46, 38, 54); }
+    // пиксельная анимация (spritepaint-листы): idle/walk/fire по состоянию меха
+    if (window.SPRITEPAINT) {
+      m.anim = m.anim || new SPRITEPAINT.PixelAnimator(SPRITEPAINT.export.sheet);
+      const frac = (m.hpCur ?? m.maxHp) / m.maxHp;
+      m.anim.draw(ctx, X, Y, 1, !m.isPlayer, frac < .35 ? 'red' : null);
+      // HP-бар поверх спрайта
+      if (frac < 1) { srect(ctx, X - 16, Y - 52, 32, 3, '#111'); srect(ctx, X - 15, Y - 51, Math.max(0, Math.round(30 * frac)), 1, frac > .5 ? '#5ad15a' : frac > .25 ? '#ffd23e' : '#e04b3a'); }
+      return;
+    }
+    // ---- legacy-отрисовка примитивами (если sprites.js не загружен) ----
+    const P = m.parts;
     const tierCol = { light: '#aab2bd', medium: '#8f9aa8', heavy: '#77808d' };
     const body = tierCol[P.torso.tier], dark = '#3a3e45', yel = '#ffd23e';
     const bob = Math.sin(performance.now() / 400 + m.x) * 1;
-    const X = sx + TW/2, Y = sy + TH/2 + bob;
-    // тень
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(X, Y + 10, 16, 6, 0, 0, 7); ctx.fill();
-    if (hl) { ctx.strokeStyle = hl; ctx.lineWidth = 2; ctx.strokeRect(X - 18, Y - 44, 36, 54); }
     // ноги (по тиру ног)
     const legW = P.legs.tier === 'heavy' ? 8 : 6;
     srect(ctx, X - 12, Y - 6, legW, 14, dark); srect(ctx, X + 12 - legW, Y - 6, legW, 14, dark);
@@ -366,6 +377,8 @@ class Battle {
     const w = bestWeapon(att, def);
     if (!w) { this.msg(`${att.name}: no firing solution`); return false; }
     w.ammoLeft--;
+    // spritepaint-анимация: мех проигрывает кадры выстрела (отдача + вспышка)
+    if (att.anim && window.SPRITEPAINT) att.anim.play('fire', { once: true });
     const variance = 0.75 + srand() * 0.5;            // разброс урона ±25%
     const tile = BF.at(def.x, def.y);
     const coverDf = tile.cover ? 8 : 0;
@@ -432,7 +445,13 @@ class Battle {
     if (!this.player.alive) { this.over = 'lose'; this.msg('MECH DESTROYED — MISSION FAILED'); }
     else if (!this.enemies.some(e => e.alive)) { this.over = 'win'; this.msg('ALL HOSTILES ELIMINATED'); }
   }
-  update(dt) { this.fx.forEach(f => f.t += dt * 60); this.fx = this.fx.filter(f => f.t < f.dur); }
+  update(dt) { this.fx.forEach(f => f.t += dt * 60); this.fx = this.fx.filter(f => f.t < f.dur);
+    // тикем все spritepaint-анимации юнитов: fire (one-shot) не прерываем; walk — во время хода ботов
+    for (const u of this.units) if (u.anim && u.alive) {
+      if (!u.anim.oneShot) u.anim.play(this.turn === 'bots' ? 'walk' : 'idle');
+      u.anim.update(dt);
+    }
+  }
   render() {
     const r = this.renderer, ctx = r.ctx;
     ctx.clearRect(0, 0, CW, CH);
@@ -483,6 +502,7 @@ const GameState = {
   loadout: { torso: 'medium', armR: 'medium', armL: 'medium', legs: 'medium',
              wR: 'Mk11 Sniper', wL: 'Zhiniao 50', back: 'Huoyao 3' },
   battle: null,
+  hangarAnim: null, // постоянный PixelAnimator меха в ангаре (иначе пересоздавался каждый кадр)
 };
 const ENEMY_TEMPLATES = [
   { name: 'RECON "WASP"',  tint: '#7fae7f', parts: { torso:'light', armR:'light', armL:'light', legs:'light' }, weapons: { armR: 'Mk18 Spike', armL: 'Huida 3' } },
@@ -701,12 +721,24 @@ function drawHangarBG(cv) {
   for (let x = 0; x < CW; x += 64) {                         // изополоса-плиты
     ctx.strokeStyle = '#2c303a'; ctx.beginPath(); ctx.moveTo(x, 540); ctx.lineTo(x + 120, 300); ctx.stroke(); }
   for (let i = 0; i < 14; i++) srect(ctx, 120 + i * 22, 296, 11, 8, i % 2 ? '#c9a227' : '#111'); // жёлто-чёрные полосы
-  // мех игрока по центру (тот же спрайтовый код)
-  const m = buildPlayerMech(); m.x = 0; m.y = 0; m.hpCur = undefined;
-  const r = new IsometricRenderer(cv); r.camX = -CW / 2 + 32 + 0; r.camY = -CH / 2 - 40;
-  const saveH = BF.at(0, 0).h; BF.at(0, 0).h = 0;            // рисуем на «нулевой» клетке
-  r.drawMech(m, null);
-  BF.at(0, 0).h = saveH;
+  // мех игрока по центру — пиксельная spritepaint-анимация (цикл idle -> walk -> fire каждые 4с)
+  if (window.SPRITEPAINT) {
+    const A = GameState.hangarAnim = GameState.hangarAnim || new SPRITEPAINT.PixelAnimator(SPRITEPAINT.export.sheet);
+    GameState.hangarLast = GameState.hangarLast || performance.now();
+    const dt = Math.min(0.05, (performance.now() - GameState.hangarLast) / 1000); GameState.hangarLast = performance.now();
+    const now = performance.now(), cyc = Math.floor(now / 4000) % 3;
+    if (!A.oneShot) A.play(['idle', 'walk', 'fire'][cyc], { once: cyc === 2 });
+    A.update(dt);
+    A.draw(ctx, CW / 2, 500, 2.2, false, null);
+    ctx.fillStyle = '#8fa9c9'; ctx.font = '10px monospace';
+    ctx.fillText('ANIM: ' + ['IDLE', 'WALK CYCLE', 'FIRE + RECOIL'][cyc] + '  (spritepaint frames)', CW / 2 - 100, 522);
+  } else {
+    const m = buildPlayerMech(); m.x = 0; m.y = 0; m.hpCur = undefined;
+    const r = new IsometricRenderer(cv); r.camX = -CW / 2 + 32 + 0; r.camY = -CH / 2 - 40;
+    const saveH = BF.at(0, 0).h; BF.at(0, 0).h = 0;
+    r.drawMech(m, null);
+    BF.at(0, 0).h = saveH;
+  }
   // ящики и бочка №13 вокруг
   srect(ctx, 60, 250, 54, 44, '#5d3d1e'); srect(ctx, 64, 254, 46, 36, '#8a5a2a'); srect(ctx, 60, 250, 54, 4, '#caa06a');
   srect(ctx, 86, 216, 40, 34, '#5d3d1e'); srect(ctx, 90, 220, 32, 26, '#8a5a2a');

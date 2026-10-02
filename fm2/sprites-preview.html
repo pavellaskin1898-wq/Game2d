@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>SPRITEPAINT — MECH ANIMATION PREVIEW (WANZER)</title>
+<style>
+  body { background:#14161c; color:#cfd6de; font-family:monospace; margin:0; padding:24px; }
+  h1 { color:#ffd23e; font-size:18px; letter-spacing:2px; }
+  p { color:#8fa9c9; font-size:12px; max-width:720px; }
+  #sp-preview { display:flex; gap:24px; flex-wrap:wrap; }
+  .sp-cell { background:#1d2027; border:1px solid #2c303a; padding:12px; text-align:center; }
+  .sp-cell canvas { image-rendering:pixelated; background:
+    repeating-conic-gradient(#23262e 0% 25%, #1a1d23 0% 50%) 0 0/16px 16px; }
+  .sp-cell div { font-size:11px; color:#9adf6b; margin-bottom:8px; }
+  #sp-actions { margin-top:20px; }
+  #sp-actions a { color:#ffd23e; border:1px solid #ffd23e; padding:8px 14px; text-decoration:none; font-size:12px; }
+  a.back { color:#8fa9c9; font-size:12px; display:block; margin-top:16px; }
+</style>
+</head>
+<body>
+<h1>▣ SPRITEPAINT ANIMATION — WANZER MECH</h1>
+<p>Покадровая пиксель-анимация в духе spritepaint.com: спрайт-листы хранятся base64-кадрами
+(палитра + индексы), проигрываются покадрово. Анимации: IDLE (дыхание + мерцание визора),
+WALK (боевой шаг, 6 кадров), FIRE (отдача ствола + вспышка дула). Слева — мех игрока (лицом вправо),
+справа — зеркальный вражеский (тёмный тон). Эти же листы используются в бою и ангаре игры.</p>
+<div id="sp-preview"></div>
+<div id="sp-actions"></div>
+<a class="back" href="index.html">← вернуться в игру (ангар / бой)</a>
+<script src="sprites.js"></script>
+</body>
+</html>
