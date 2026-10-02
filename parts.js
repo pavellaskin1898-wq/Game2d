@@ -91,10 +91,11 @@ function svgHead(tier) {
 }
 
 // Рука меха: массивная плечевая броня-трапеция, двухцилиндровый бицепс, предплечье-щит, клешня
+// armR — правая рука меха (справа на экране, x=294), armL — левая (слева, x=106)
 function svgArm(tier, side) {
   const p = tierPalette(tier);
-  const x = side === "R" ? 262 : 106; // плечо
-  const dir = side === "R" ? 1 : -1;
+  const x = side === "R" ? 294 : 106; // плечо
+  const dir = 1; // зеркалить не нужно — каждая рука рисуется на своей стороне
   const g = (dx) => x + dx * dir;
   const wPad = tier === "heavy" ? 30 : tier === "medium" ? 24 : 18;
 
@@ -279,13 +280,13 @@ const WEAPON_SLOTS = [
 function svgWeapon(slotId, tier) {
   const p = tierPalette(tier);
   if (slotId === "weaponR") {
-    // ствол из правой руки (кисть ~ x=262, y≈305)
+    // ствол из правой руки (кисть ~ x=294, y≈305)
     return `
-      <rect x="272" y="298" width="48" height="13" rx="5" fill="#39465c" stroke="#0d1420" stroke-width="2"/>
-      <rect x="314" y="300.5" width="18" height="8" rx="3" fill="${p.dark}"/>
-      <circle cx="334" cy="304.5" r="4" fill="#fff7c0"/>
-      ${tier === "heavy" ? `<rect x="280" y="288" width="26" height="10" rx="4" fill="${p.joint}"/><rect x="276" y="311" width="30" height="7" rx="3" fill="${p.dark}"/>` : ""}
-      ${tier === "medium" ? `<rect x="284" y="311" width="20" height="6" rx="3" fill="${p.dark}"/>` : ""}`;
+      <rect x="304" y="298" width="48" height="13" rx="5" fill="#39465c" stroke="#0d1420" stroke-width="2"/>
+      <rect x="346" y="300.5" width="18" height="8" rx="3" fill="${p.dark}"/>
+      <circle cx="366" cy="304.5" r="4" fill="#fff7c0"/>
+      ${tier === "heavy" ? `<rect x="312" y="288" width="26" height="10" rx="4" fill="${p.joint}"/><rect x="308" y="311" width="30" height="7" rx="3" fill="${p.dark}"/>` : ""}
+      ${tier === "medium" ? `<rect x="316" y="311" width="20" height="6" rx="3" fill="${p.dark}"/>` : ""}`;
   }
   if (slotId === "weaponL") {
     return `

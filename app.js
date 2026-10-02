@@ -235,6 +235,7 @@ if (bodyPart && cockpitTip) {
 
 /* ---------- Полный перерендер ---------- */
 function renderAll() {
+  if (window.HANGAR_DECOR) window.HANGAR_DECOR.render(); // пиксельный декор ангара
   renderRobot();
   renderSlots();
   renderPicker();

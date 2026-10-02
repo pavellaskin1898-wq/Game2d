@@ -6,6 +6,11 @@
 <title>Ангар — Мех с пилотом 2D</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
 <link rel="stylesheet" href="style.css">
+  <style>
+    #robotSvg, .hangar svg, .room-scene svg { shape-rendering: crispEdges; image-rendering: pixelated; }
+    /* декор ангара — только фон, клики проходят сквозь него к меху */
+    #decorBack, #decorFront { pointer-events: none; }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -137,6 +142,9 @@
               </filter>
             </defs>
 
+            <!-- ===== ПИКСЕЛЬНЫЙ ДЕКОР АНГАРА (генерируется в decor.js) ===== -->
+            <g id="decorBack"></g>
+
             <!-- Оружие на спине (за роботом) -->
             <g id="part-weaponBack" class="robot-part" data-slot="weaponBack"></g>
 
@@ -150,6 +158,9 @@
             <!-- Стволы оружия в руках (поверх рук) -->
             <g id="part-weaponL" class="robot-part" data-slot="weaponL" filter="url(#shadow)"></g>
             <g id="part-weaponR" class="robot-part" data-slot="weaponR" filter="url(#shadow)"></g>
+
+            <!-- Декор перед мехом: ящики, бочки, конус, тележка с запчастями -->
+            <g id="decorFront"></g>
           </svg>
 
           <div class="hangar-floor-label">Сектор сборки • Ангар №7</div>
@@ -174,6 +185,7 @@
   </div>
 
   <script src="parts.js"></script>
+  <script src="decor.js"></script>
   <script src="pilotroom.js"></script>
   <script src="app.js"></script>
 </body>
